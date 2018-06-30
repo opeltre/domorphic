@@ -209,6 +209,24 @@ function vv (tag, attr, branch) {
     my._vv = true;
     return getset(my,self);
 
+    /****** GETSET ******/
+    function forEachKey (obj) {
+        return f => Object.keys(obj).forEach(f);
+    }
+
+    function getset (obj, attrs) {
+        let method = 
+            key => function (x) {
+                if (!arguments.length)
+                    return attrs[key];
+                attrs[key] = x;
+                return obj;
+            };
+
+        forEachKey(attrs)(
+            key => obj[key] = method(key)
+        );
+    }
 }
 
 /*** emit ***/
@@ -229,21 +247,3 @@ vv.emit = function (name, data) {
         ));
 }
 
-/****** GETSET ******/
-function forEachKey (obj) {
-    return f => Object.keys(obj).forEach(f);
-}
-
-function getset (obj, attrs) {
-    let method = 
-        key => function (x) {
-            if (!arguments.length)
-                return attrs[key];
-            attrs[key] = x;
-            return obj;
-        };
-
-    Object.keys(attrs).forEach(
-        key => obj[key] = method(key)
-    );
-}
