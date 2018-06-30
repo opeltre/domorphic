@@ -25,7 +25,7 @@ function vv (tag, attr, branch) {
 
     function my (model, append = true) {
         /** model **/
-        let model = model || my.model();
+        model = model || my.model();
         let $m = x => isModelFunction(x) ? x(model) : x;
         /** node **/
         my
@@ -167,7 +167,7 @@ function vv (tag, attr, branch) {
 
     function parseBranch (b) {
         let t = x => (typeof x);
-        if (t(b) === 'string' || t(b) === 'function')
+        if (t(b) === 'string' || isModelFunction(b))
             return vv('text').html(b)
         if (Array.isArray(b)) 
             return (t(b[0]) === 'function')
@@ -222,10 +222,10 @@ function vv (tag, attr, branch) {
                 attrs[key] = x;
                 return obj;
             };
-
-        forEachKey(attrs)(
+        Object.keys(attrs).forEach(
             key => obj[key] = method(key)
         );
+        return obj;
     }
 }
 
