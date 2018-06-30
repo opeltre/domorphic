@@ -2,7 +2,10 @@ let msgView =
     m => 
         vv('.msg', [
             ['.msg-head', ['from: '+ m.user]],
-            ['.msg-body', [m.body]]
+            ['.msg-body', 
+                {style: "border: 1px solid #aaa; margin:5px;"}, 
+                [m.body]
+            ]
         ]);
 
 let msgs = 
@@ -13,13 +16,19 @@ let msgs =
 let button =
     vv('button')
         .on('click', vv.emit('new-msg', getMsg))
-        .html('chat');
+        .html('chat!');
 
 let chat = 
     vv('#chat', [
         ['h1', [M => 'Welcome to ' + M.channel + '!']],
-        msgs,
-        button 
+        ['div', [
+            button,
+            ['a', 
+                {href:'https://github.com/opeltre/virtual-view'},
+                ['vv']
+            ]
+        ]],
+        msgs
     ]);
 
 chat
@@ -30,6 +39,7 @@ chat
     .plant('#win')
     .start('load');
 
+/*** generate peaceful messages ***/
 let i = 1, body = '';
 
 function getMsg (evtTarget) {
