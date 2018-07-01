@@ -54,13 +54,16 @@ function vv (tag, attr, branch) {
     my.start = (when, model, append=true) => {
         if (when === 'now')
             return my(model, append);
-        if (when === 'load') {
-            my.doc().addEventListener(
-                'DOMContentLoaded',
-                () => my(model, append)
-            );
-            return my;
+        else {
+            if (when === 'dom')
+                let evt = 'DOMContentLoaded';
+            else
+                let evt = 'vv#' + when; 
         }
+        my.doc().addEventListener(
+            evt, 
+            () => my(model, append)
+        );
         return my;
     }
 
@@ -222,7 +225,7 @@ function vv (tag, attr, branch) {
                 attrs[key] = x;
                 return obj;
             };
-        Object.keys(attrs).forEach(
+        forEachKey(attrs)(
             key => obj[key] = method(key)
         );
         return obj;
