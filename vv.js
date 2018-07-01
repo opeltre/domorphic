@@ -54,16 +54,21 @@ function vv (tag, attr, branch) {
     my.start = (when, model, append=true) => {
         if (when === 'now')
             return my(model, append);
-        else {
-            if (when === 'dom')
-                let evt = 'DOMContentLoaded';
-            else
-                let evt = 'vv#' + when; 
+        if (when === 'dom') {
+            my.doc().addEventListener(
+                'DOMContentLoaded', 
+                () => my(model, append)
+            );
         }
-        my.doc().addEventListener(
-            evt, 
-            () => my(model, append)
-        );
+        else {
+            let evt = 'vv#' + when; 
+            my.doc().addEventListener(
+                evt,
+                model ?
+                    e => my(model, append)
+                    e => my(e.detail, append)
+            );
+        }
         return my;
     }
 
@@ -249,4 +254,36 @@ vv.emit = function (name, data) {
             }
         ));
 }
+
+/*** ajax ***/
+vv.ajax = function (data) {
+
+    let my = {},
+        xhr = new XMLHttpRequest();
+    data = data ? JSON.stringify(data) : null;
+
+    ['get', 'post', 'put', 'move', 'delete']
+        .forEach(m => my[m] = method(m));
+
+    function method (m) {
+        return url => {
+            xhr.open(method.toUpperCase(), url);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            return new Promise(resolve => then(resolve));
+        }
+    }
+
+    function then (f) {
+        let ok = () => (xhr.readyState === 4 && xhr.status === 200);
+        xhr.onreadystate = () => ok() && f(xhr.responseText);
+        xhr.send(data);
+    }
+   
+    my.del = my.delete;
+    return my;
+}
+
+
+
+
 

@@ -2,7 +2,6 @@
 
 ## todo: 
 
-* import ajax
 * import vv-backend
 
 
