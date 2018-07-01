@@ -37,7 +37,7 @@ chat
         msgs: []
     })
     .plant('#win')
-    .start('load');
+    .start('dom');
 
 /*** generate peaceful messages ***/
 let i = 1, body = '';
