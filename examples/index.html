@@ -1,0 +1,40 @@
+<html>
+    <head>
+
+        <script src='/lib/vv.js'></script>
+        <script src='/lib/vv-examples/input.js'></script>
+        <script src='/lib/vv-examples/chat.js'></script>
+
+        <link rel='stylesheet' href='/style/main.css'></script>
+        <link rel='stylesheet' href='/style/fonts.css'></script>
+
+    </head>
+
+    <body>
+    </body>
+
+    <script>
+        /* create a div with id 'examples' */
+        vv('#examples', [
+            ['h1', ['virtual view']],
+            ['a', 
+                {href: 'https://github.com/opeltre/virtual-view'},
+                ['git']
+            ]
+        ])
+        ({}); 
+        /* execute to start it now with the {} default model */
+    </script>
+
+<style>
+.example {
+    border: 1px solid black;
+    margin: 10px;
+    padding: 10px;
+}
+#examples {
+    padding: 5px;
+}
+</style>
+
+</html>

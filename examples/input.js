@@ -1,22 +1,35 @@
 /*** mirror an input element ***/
 
-vv('div')
+vv('div.example')
     .branch([
+        vv('h2')
+            .html('input example'),
         vv('input')
             .on(
                 'input', 
                 vv.emit('type', input => input.value)
             ),
         vv('div')
-            .html(
-                Model => Model.txt.fontcolor('#b8a')
-            )
             .up(
                 'type', 
-                (data, Model) => ({txt: d})
+                (data, Model) => ({txt: data})
             )
+            .branch([
+                vv('span')
+                    .html(
+                        Model => { 
+                            let n=Model.txt.length;
+                            return `${n} letter${n <= 1 ? '' : 's'}: `;
+                        }
+                    ),
+                vv('span')
+                    .html(
+                        Model => Model.txt.fontcolor('#b8a')
+                    )
+            ])
+            
     ])
-    .plant('#win')
+    .plant('#examples')
     .start('dom', {txt: ''});
 
 /*

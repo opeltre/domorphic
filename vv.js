@@ -64,9 +64,9 @@ function vv (tag, attr, branch) {
             let evt = 'vv#' + when; 
             my.doc().addEventListener(
                 evt,
-                model ?
-                    e => my(model, append)
-                    e => my(e.detail, append)
+                model
+                    ? e => my(model, append)
+                    : e => my(e.detail, append)
             );
         }
         return my;
@@ -283,7 +283,8 @@ vv.ajax = function (data) {
     return my;
 }
 
-
+if (typeof window === 'undefined')
+    module.exports = vv;
 
 
 

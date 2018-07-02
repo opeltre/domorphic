@@ -19,15 +19,10 @@ let button =
         .html('chat!');
 
 let chat = 
-    vv('#chat', [
-        ['h1', [M => 'Welcome to ' + M.channel + '!']],
-        ['div', [
-            button,
-            ['a', 
-                {href:'https://github.com/opeltre/virtual-view'},
-                ['vv']
-            ]
-        ]],
+    vv('#chat.example', [
+        ['h2', ['chat example']],
+        ['h3', [M => 'Welcome to ' + M.channel + '!']],
+        button,
         msgs
     ]);
 
@@ -36,7 +31,7 @@ chat
         channel: 'dar-es-salam',
         msgs: []
     })
-    .plant('#win')
+    .plant('#examples')
     .start('dom');
 
 /*** generate peaceful messages ***/
