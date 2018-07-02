@@ -2,7 +2,7 @@
 
 [examples](http://mathchat.fr:8083/vv)
 
-Just like this code, examples are inspired from 
+Just like this code, examples were inspired by 
 the [elm](http://elm-lang.org) language.
 
 ## plain js dynamic templating
