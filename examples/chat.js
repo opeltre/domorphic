@@ -21,14 +21,14 @@ let button =
 let chat = 
     vv('#chat.example', [
         ['h2', ['chat example']],
-        ['h3', [M => 'Welcome to ' + M.channel + '!']],
+        ['h3', [M => 'Welcome to: ' + M.channel.fontcolor('#79b') + '!']],
         button,
         msgs
     ]);
 
 chat
     .model({
-        channel: 'dar-es-salam',
+        channel: 'Dar es Salam',
         msgs: []
     })
     .plant('#examples')

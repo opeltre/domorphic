@@ -61,12 +61,26 @@ function vv (tag, attr, branch) {
             );
         }
         else {
-            let evt = 'vv#' + when; 
+            let M = e => Object.assign(
+                my.model(),
+                model || {},
+                e.detail
+            );
             my.doc().addEventListener(
-                evt,
-                model
-                    ? e => my(model, append)
-                    : e => my(e.detail, append)
+                'vv#' + when,
+                 e => my(M(e), append)
+            );
+        }
+        return my;
+    }
+
+    my.kill = (when) => {
+        if (when === 'now')
+            my.node().remove();
+        else {
+            my.doc().addEventListener(
+                'vv#' + when,
+                () => my.node().remove()
             );
         }
         return my;
@@ -102,9 +116,17 @@ function vv (tag, attr, branch) {
                 update(e.detail, my.model())
             );
         let doRedraw = M => {
-            let node = my.node();
-            let fragment = my(M, false);
-            node.replaceWith(fragment);
+            let node =  my.node();
+            if (!node) {
+                console.log('drawing');
+                console.log(my.node());
+                my(M);
+            } else {
+                let fragment = my(M, false);
+                node.replaceWith(fragment);
+                console.log('redrawing');
+                console.log(my.node());
+            }
         };
         let listener = redraw 
             ? e => doRedraw(doUpdate(e))
@@ -144,13 +166,16 @@ function vv (tag, attr, branch) {
         forEachKey(attributes)(
             key => my.nodeSet(key, $m(my.attr(key)))
         );
-        forEachKey(events)(
-            key => my.on(key).forEach(
-                list => my.node().addEventListener(key, ...list)
-            )
-        );
         forEachKey(self.properties)(
             key => my.node()[key] = $m(self.properties[key])
+        );
+        let model = $m(x => x),
+            $mListener = l => (t => l(t, model));
+        forEachKey(events)(
+            key => my.on(key).forEach(
+                list => my.node()
+                    .addEventListener(key, ...list.map($mListener))
+            )
         );
         my.node().innerHTML = $m(my.html());
         my.node().value = $m(my.value());
@@ -241,8 +266,8 @@ function vv (tag, attr, branch) {
 vv.emit = function (name, data) {
     
     let getData = 
-        target => (typeof data === 'function')
-            ? data(target)
+         evt => (typeof data === 'function')
+            ? data(evt.target)
             : data;
 
     return evt => document
@@ -250,7 +275,7 @@ vv.emit = function (name, data) {
             'vv#' + name,
             { 
                 bubbles: true,
-                detail : getData(evt.target)
+                detail : getData(evt)
             }
         ));
 }
@@ -267,7 +292,7 @@ vv.ajax = function (data) {
 
     function method (m) {
         return url => {
-            xhr.open(method.toUpperCase(), url);
+            xhr.open(m.toUpperCase(), url);
             xhr.setRequestHeader('Content-Type', 'application/json');
             return new Promise(resolve => then(resolve));
         }
@@ -275,7 +300,7 @@ vv.ajax = function (data) {
 
     function then (f) {
         let ok = () => (xhr.readyState === 4 && xhr.status === 200);
-        xhr.onreadystate = () => ok() && f(xhr.responseText);
+        xhr.onreadystatechange = () => ok() && f(xhr.responseText);
         xhr.send(data);
     }
    

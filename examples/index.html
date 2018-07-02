@@ -4,6 +4,7 @@
         <script src='/lib/vv.js'></script>
         <script src='/lib/vv-examples/input.js'></script>
         <script src='/lib/vv-examples/chat.js'></script>
+        <script src='/lib/vv-examples/gif.js'></script>
 
         <link rel='stylesheet' href='/style/main.css'></script>
         <link rel='stylesheet' href='/style/fonts.css'></script>
@@ -15,12 +16,16 @@
 
     <script>
         /* create a div with id 'examples' */
-        vv('#examples', [
-            ['h1', ['virtual view']],
-            ['a', 
-                {href: 'https://github.com/opeltre/virtual-view'},
-                ['git']
-            ]
+        vv('div', [
+            ['h1', ['vv-examples']],
+            ['#examples', [
+                vv('code').html('div#examples'),
+                ['br'],
+                ['a', 
+                    {href: 'https://github.com/opeltre/virtual-view'},
+                    ['a.href = git']
+                ]
+            ]]
         ])
         ({}); 
         /* execute to start it now with the {} default model */
@@ -29,11 +34,13 @@
 <style>
 .example {
     border: 1px solid black;
-    margin: 10px;
+    margin: 20px;
     padding: 10px;
 }
 #examples {
-    padding: 5px;
+    margin: 10px;
+    padding: 10px;
+    border: 1px solid #a86;
 }
 </style>
 
