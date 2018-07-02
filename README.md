@@ -2,9 +2,9 @@
 
 [examples](http://mathchat.fr:8083/vv)
 
-## plain javascript dynamic templating
+## plain js dynamic templating
 
-* lightweight syntax to design the DOM in plain js 
+* lightweight syntax to design the DOM
 * functional and event-based for dynamism
 
 **Design a virtual dom architecture:**
@@ -14,9 +14,9 @@ It either acts on the DOM or passively returns a new documentFragment.
 
 **Choose when you start it and choose when to update it:**
 
-Just hook on events dispatched by `vv.emit`.
-Start your app with `vv.start`, 
-redraw or passively update the model with `vv.update`.
+Just hook on events dispatched by `vv.emit`.\\
+Start your app with `vv.start`.\\
+Redraw or passively update the model with `vv.update`.
 
 ## todo: 
 
