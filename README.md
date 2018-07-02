@@ -4,17 +4,18 @@
 
 ## plain javascript dynamic templating
 
-* lightweight syntax to js-design the DOM 
+* lightweight syntax to design the DOM in plain js 
 * functional and event-based for dynamism
 
-`vv` lets you design a virtual dom architecture.
-It basically returns a function that you feed with a model object.
-It either acts on the DOM or passively returns a documentFragment
+### Design a virtual dom architecture.
 
-Choose when you start it
-and choose when to update it.
+`vv` basically returns a function that you feed with a model object.
+It either acts on the DOM or passively returns a new documentFragment.
+
+###Choose when you start it and choose when to update it.
+
 Just hook on events dispatched by `vv.emit`.
-start your app with `vv.start`, 
+Start your app with `vv.start`, 
 redraw or passively update the model with `vv.update`.
 
 ## todo: 
