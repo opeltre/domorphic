@@ -9,7 +9,7 @@
 
 **Design a virtual dom architecture:**
 
-`vv` basically returns a function that you feed with a model object.
+`vv` basically returns a function that you feed with a model object.   
 It either acts on the DOM or passively returns a new documentFragment.
 
 **Choose when you start it and choose when to update it:**
