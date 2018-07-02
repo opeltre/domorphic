@@ -1,7 +1,8 @@
 # virtual view
 
 [examples](http://mathchat.fr:8083/vv)
-Like this code, examples are inspired from 
+
+Just like this code, examples are inspired from 
 the [elm](http://elm-lang.org) language.
 
 ## plain js dynamic templating
