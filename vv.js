@@ -39,18 +39,10 @@ function vv (tag, attr, branch) {
             .forEach(b => b(model));
         /** plant **/
         return (!self.stem && append)
-            ? my.paint($m).parentNode()
+            ? my.nodePaint($m).parentNode()
             : my.parentNode();
     }
    
-    my.paint = ($m, append) => {
-        let target = self.plant
-            ? self.doc.querySelector($m(self.plant))
-            : self.doc.body;
-        target.appendChild(my.parentNode());
-        return my;
-    }
-
     my.start = (when, model, append=true) => {
         if (when === 'now')
             return my(model, append);
@@ -86,6 +78,40 @@ function vv (tag, attr, branch) {
         return my;
     }
 
+    my.on = (evt, listener, capture=false) => {
+        if (!listener)
+            return events[evt];
+        if (events[evt])
+            events[evt].push([listener, capture]);
+        else
+            events[evt] = [[listener, capture]];
+        return my;
+    }
+
+    my.up = (evt, update, redraw=true, then) => {
+        let doUpdate = e => Object
+            .assign(
+                my.model(),
+                update(e.detail, my.model())
+            );
+        let doRedraw = M => {
+            let node =  my.node();
+            if (!node) { 
+                my(M);
+                return my.node()
+            }
+            let fragment = my(M, false);
+            node.replaceWith(fragment);
+            return my.node();
+        };
+        then = then || (x => x)
+        let listener = redraw 
+            ? e => then(doRedraw(doUpdate(e)))
+            : e => then(doUpdate(e));
+        my.doc().addEventListener('vv#'+evt, listener);
+        return my;
+    }
+    
     my.link = (stem) => my
         .stem(stem)
         .svg(stem.svg())
@@ -99,42 +125,6 @@ function vv (tag, attr, branch) {
         return my;
     }
 
-    my.on = (evt, listener, capture=false) => {
-        if (!listener)
-            return events[evt];
-        if (events[evt])
-            events[evt].push([listener, capture]);
-        else
-            events[evt] = [[listener, capture]];
-        return my;
-    }
-
-    my.up = (evt, update, redraw=true) => {
-        let doUpdate = e => Object
-            .assign(
-                my.model(),
-                update(e.detail, my.model())
-            );
-        let doRedraw = M => {
-            let node =  my.node();
-            if (!node) {
-                console.log('drawing');
-                console.log(my.node());
-                my(M);
-            } else {
-                let fragment = my(M, false);
-                node.replaceWith(fragment);
-                console.log('redrawing');
-                console.log(my.node());
-            }
-        };
-        let listener = redraw 
-            ? e => doRedraw(doUpdate(e))
-            : doUpdate;
-        my.doc().addEventListener('vv#'+evt, listener);
-        return my;
-    }
-    
     my.show = (str) => {
         console.log(str);
         console.log(self);
@@ -154,14 +144,6 @@ function vv (tag, attr, branch) {
         return my;
     }
 
-    my.nodeAppend = (append) => {
-        let parentNode = (self.stem && append)
-                ? self.stem.node()
-                : self.doc.createDocumentFragment();
-        parentNode.appendChild(self.node);
-        return my.parentNode(parentNode);
-    }
-
     my.nodeConf = ($m) => {
         forEachKey(attributes)(
             key => my.nodeSet(key, $m(my.attr(key)))
@@ -179,6 +161,22 @@ function vv (tag, attr, branch) {
         );
         my.node().innerHTML = $m(my.html());
         my.node().value = $m(my.value());
+        return my;
+    }
+
+    my.nodeAppend = (append) => {
+        let parentNode = (self.stem && append)
+                ? self.stem.node()
+                : self.doc.createDocumentFragment();
+        parentNode.appendChild(self.node);
+        return my.parentNode(parentNode);
+    }
+
+    my.nodePaint = ($m, append) => {
+        let target = self.plant
+            ? self.doc.querySelector($m(self.plant))
+            : self.doc.body;
+        target.appendChild(my.parentNode());
         return my;
     }
 
@@ -248,7 +246,7 @@ vv.emit = function (name, data) {
     
     let getData = 
          evt => (typeof data === 'function')
-            ? data(evt.target)
+            ? data(evt.target || evt)
             : data;
 
     return evt => document
@@ -256,7 +254,7 @@ vv.emit = function (name, data) {
             'vv#' + name,
             { 
                 bubbles: true,
-                detail : getData(evt)
+                detail : getData(evt || {})
             }
         ));
 }
