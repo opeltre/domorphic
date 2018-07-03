@@ -241,25 +241,6 @@ function vv (tag, attr, branch) {
 
     my._vv = true;
     return getset(my,self);
-
-    /****** GETSET ******/
-    function forEachKey (obj) {
-        return f => Object.keys(obj).forEach(f);
-    }
-
-    function getset (obj, attrs) {
-        let method = 
-            key => function (x) {
-                if (!arguments.length)
-                    return attrs[key];
-                attrs[key] = x;
-                return obj;
-            };
-        forEachKey(attrs)(
-            key => obj[key] = method(key)
-        );
-        return obj;
-    }
 }
 
 /*** emit ***/
@@ -311,5 +292,26 @@ vv.ajax = function (data) {
 if (typeof window === 'undefined')
     module.exports = vv;
 
+/****** GETSET ******/
+/* still wanted in global scope, e.g. for bmp2svg.
+ * forEachKey, $, logthen... as well?
+ */
 
+function forEachKey (obj) {
+    return f => Object.keys(obj).forEach(f);
+}
+
+function getset (obj, attrs) {
+    let method = 
+        key => function (x) {
+            if (!arguments.length)
+                return attrs[key];
+            attrs[key] = x;
+            return obj;
+        };
+    forEachKey(attrs)(
+        key => obj[key] = method(key)
+    );
+    return obj;
+}
 
