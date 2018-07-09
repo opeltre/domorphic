@@ -2,7 +2,8 @@ let gifs  = {};
 let logthen = x => {console.log(x); return x};
 
 gifs.initModel = {
-    gifSrc: 'https://media2.giphy.com/media/4TPoYM5nFbBII/giphy.gif',
+    gifSrc: 'https://media3.giphy.com/media/WoCxkkpiweO6Q/giphy.gif',
+         //'https://media2.giphy.com/media/4TPoYM5nFbBII/giphy.gif',
     topic: 'cat'
 };
 
@@ -51,16 +52,10 @@ gifs.view =
         .plant('#gif-view')
         .start('gif.init');
 
-gifs.init =
-    () => {
-        gifs.moreGif(gifs.initModel.topic);
-        vv.emit('gif.init')();
-    };
-
 gifs.initButton = 
     vv('button', ['...sure?'])
         .plant('#gif-init')
-        .on('click', gifs.init)
+        .on('click', vv.emit('gif.init'))
         .kill('gif.init');
 
 vv('.example')

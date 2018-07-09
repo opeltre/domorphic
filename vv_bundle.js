@@ -1,7 +1,68 @@
+/****** vv_bundle ******/
+let __ = {};
+
+__.pipe = 
+    (f, ...fs) => fs.length
+        ? (...xs) =>  __.pipe(...fs)(f(...xs))
+        : (...xs) => f(...xs);
+
+__.return = 
+    x => y => x;
+
+__.xs = 
+    f => xs => f(...xs);
+
+__.do = 
+    (...fs) => 
+        x => __.pipe(...fs, __.return(x))(x);
+
+__.if = 
+    (f,g,h) => 
+        (...xs) => f(...xs) ? g(...xs) : h(...xs);
+
+__.not = 
+    b => !b;
+
+__.logthen = 
+    x => {console.log(x); return x};
+
+__.forKeys = 
+    (...fs) => 
+        obj => Object.keys(obj).forEach(
+            k => __.pipe(...fs)(k, obj[k])
+        );
+
+__.mapKeys = 
+    (...fs) => 
+        obj => Object.assign({}, 
+            ...Object.keys(obj).map(
+                k => __.pipe(...fs)(k, obj[k])
+            )
+        ); 
+
+__.subKeys = 
+    (...ks) => 
+        obj => {
+            let sub = {};
+            ks.forEach(k => {
+                if (obj[k] !== undefined) 
+                    sub[k] = obj[k];
+            });
+            return sub;
+        };
+
+__.emptyKeys =
+    obj => {
+        let out = true;
+        __.forKeys(k => out = false)(obj);
+        return out;
+    };
+        
+
+
 /* 
  * L'ARBRE DOM VIRTUEL
  */
-
 function vv (tag, attr, branch) {
 
     var {tag, attr, branch} = parse(tag, attr, branch);
@@ -42,6 +103,9 @@ function vv (tag, attr, branch) {
             ? my.nodePaint($m).parentNode()
             : my.parentNode();
     }
+
+    my.modelUpdate =
+        (...Ms) => my.model(Object.assign(my.model(), ...Ms)); 
    
     my.start = (when, model, append=true) => {
         if (when === 'now')
@@ -88,29 +152,56 @@ function vv (tag, attr, branch) {
         return my;
     }
 
-    my.up = (evt, update, redraw=true, then) => {
-        let doUpdate = e => Object
-            .assign(
-                my.model(),
-                update(e.detail, my.model())
-            );
-        let doRedraw = M => {
-            let node =  my.node();
-            if (!node) { 
-                my(M);
-                return my.node()
-            }
-            let fragment = my(M, false);
-            node.replaceWith(fragment);
-            return my.node();
+    let onUpdate =  [d => d];
+
+    my.hook = 
+        (h, ...ks) => {
+            onUpdate
+                .push(__.if(
+                    __.pipe(__.subKeys(...ks), __.emptyKeys),
+                    __.do(),
+                    __.do(h)
+                ));
+            return my;
         };
-        then = then || (x => x)
-        let listener = redraw 
-            ? e => then(doRedraw(doUpdate(e)))
-            : e => then(doUpdate(e));
+
+    my.signal = 
+        (sig, ...ks) => my.hook(vv.emit(sig, d => d), ...ks);
+
+    /*
+     *  input.signal('input -> mail', 'raw, from, to, subject')
+     *  mail.hook('input -> mail')
+     */
+
+    my.update = (evt, update=(d=>d), ...then) => {
+        let doUpdate = e => {
+            Object.assign(
+                    my.model(),
+                    update(e.detail, my.model())
+            );
+            __.pipe(...onUpdate)(e.detail);
+            return my.model();
+        };
+        if (!then.length || typeof then[0]  !== 'boolean') 
+            then = [true].concat(then);
+        then[0] = then[0]
+            ? my.redraw
+            : () => my;
+        let listener = __.pipe(doUpdate, ...then);
         my.doc().addEventListener('vv#'+evt, listener);
         return my;
     }
+    my.up = my.update;
+
+    my.redraw = 
+        () => {
+            let node =  my.node();
+            if (!node) 
+                return my();
+            let fragment = my(false, false);
+            node.replaceWith(fragment);
+            return my;
+        };
     
     my.link = (stem) => my
         .stem(stem)
@@ -249,17 +340,157 @@ vv.emit = function (name, data) {
             ? data(evt.target || evt)
             : data;
 
-    return evt => document
-        .dispatchEvent(new CustomEvent(
-            'vv#' + name,
-            { 
-                bubbles: true,
-                detail : getData(evt || {})
-            }
-        ));
+    return evt => {
+        alert(name + '\n' + JSON.stringify(getData(evt || {})));
+        document
+            .dispatchEvent(new CustomEvent(
+                'vv#' + name,
+                { 
+                    bubbles: true,
+                    detail : getData(evt || {})
+                }
+            ));
+    }
 }
 
+if (typeof window === 'undefined')
+    module.exports = vv;
+
+/****** GETSET ******/
+/* still wanted in global scope, e.g. for bmp2svg.
+ * forEachKey, $, logthen... as well?
+ */
+function forEachKey (obj) {
+    return f => Object.keys(obj).forEach(f);
+}
+
+function getset (obj, attrs) {
+    let method = 
+        key => function (x) {
+            if (!arguments.length)
+                return attrs[key];
+            attrs[key] = x;
+            return obj;
+        };
+    forEachKey(attrs)(
+        key => obj[key] = method(key)
+    );
+    return obj;
+}
+function _vv (name) {
+ 
+    let app 
+        = _vv.get(name) 
+        || _vv.set(name, vv('#' + name));
+
+    app.vnodes = app.vnodes || [];
+    
+    app._name = name;
+    
+    app.mount = 
+        (...ns) => {
+            if (! ns.length)
+                return app.vnodes;
+            app.vnodes = ns;
+            return app;
+        }
+
+    let mount = 
+        (...ns) => ns.forEach(
+            ([n, attrs]) => __.forKeys(
+                (k, v) => app.connect(k, n, v)
+            )(attrs)
+        );
+
+    app.init =
+        () => {
+            mount(...app.vnodes);
+            return app;
+        };
+
+    app.connect = 
+        (k, n, v) => {
+            let [a, b, r] = app.arrow(k, n);
+            console.log(_vv.sig(a,b,r));
+            if (typeof v === 'string')
+                v = v.split(/,?\s/);
+            a.signal(_vv.sig(a,b,r), ...v);
+            b.update(_vv.sig(a,b,r), d=>d, r);
+            return app;
+        }
+
+    app.arrow = 
+        (k, n) => k[1] === '>'
+            ? [app, _vv(n), k[0] === '=']
+            : [_vv(n), app, k[1] === '='];
+
+    app.starts = 
+        (i,j) => {
+            if (vnodes[i] && vnodes[j])
+                vnodes[j].start(sig(i));
+            return app;
+        }
+
+    app.kills = 
+        (i,j) => {
+            if (vnodes[i] && vnodes[j])
+                vnodes[j].kill(sig(i));
+            return app;
+        }
+
+    app.stepwise = 
+        j => {
+            vnodes.forEach(
+                (n,i) => app
+                    .starts(i, j)
+                    .kills(i, i+1)
+            );
+            return app;
+        }
+
+    return app;
+}
+
+_vv.nodes = {};
+
+_vv.get = 
+    id => _vv.nodes[id];
+
+_vv.set = 
+    (id, vnode) => _vv.nodes[id] = vnode;
+
+_vv.sig = 
+    (n1, n2, r) => `${n1._name} ${r ? '=' : '-'}> ${n2._name}`;
+
+/*** vv_helpers ***/
+
+vv.input = 
+    (id, key=id, css='') => 
+        vv('input#' + id + css)
+            .html(M => M[key])
+            .on('input', vv.emit(id, t => t.value))
+            .up(id, (val => ({key: val})), false);
+
+vv.textarea = 
+    (id, key=id, css='') => 
+        vv('textarea#'+ id + css)
+            .value(M => M[raw])
+            .on('change', vv.emit(id, t => t.value))
+            .up(id, (val => ({key: val})), false);
+
+vv.table = 
+    body => 
+        vv('table', [
+            ['tbody', 
+                body
+                    .map(row => row
+                        .map(cell => ['td', [cell]])
+                    )
+                    .map(row => ['tr', row])
+            ]
+        ]);
 /*** ajax ***/
+
 vv.ajax = function (data) {
 
     let my = {},
@@ -286,30 +517,3 @@ vv.ajax = function (data) {
     my.del = my.delete;
     return my;
 }
-
-if (typeof window === 'undefined')
-    module.exports = vv;
-
-/****** GETSET ******/
-/* still wanted in global scope, e.g. for bmp2svg.
- * forEachKey, $, logthen... as well?
- */
-
-function forEachKey (obj) {
-    return f => Object.keys(obj).forEach(f);
-}
-
-function getset (obj, attrs) {
-    let method = 
-        key => function (x) {
-            if (!arguments.length)
-                return attrs[key];
-            attrs[key] = x;
-            return obj;
-        };
-    forEachKey(attrs)(
-        key => obj[key] = method(key)
-    );
-    return obj;
-}
-
