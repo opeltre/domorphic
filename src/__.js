@@ -1,23 +1,33 @@
+/*** __ ***/
+
 let __ = {};
 
-__.pipe = 
-    (f, ...fs) => fs.length
-        ? (...xs) =>  __.pipe(...fs)(f(...xs))
-        : (...xs) => f(...xs);
+
+__.null = 
+    () => {};
+
+__.id =
+    x => x;
 
 __.return = 
     x => y => x;
 
-__.xs = 
-    f => xs => f(...xs);
-
-__.do = 
-    (...fs) => 
-        x => __.pipe(...fs, __.return(x))(x);
+__.X = 
+    f => X => f(...X);
 
 __.if = 
     (f,g,h) => 
         (...xs) => f(...xs) ? g(...xs) : h(...xs);
+
+__.pipe = 
+    (f=__.id, ...fs) => fs.length
+        ? (...xs) =>  __.pipe(...fs)(f(...xs))
+        : (...xs) => f(...xs);
+
+__.do = 
+    (f=__.id, ...fs) => fs.length
+        ? __.pipe(__.do(f), __.do(...fs))
+        : x => {f(x); return x} 
 
 __.not = 
     b => !b;

@@ -1,24 +1,34 @@
-/****** vv_bundle ******/
+/* vv_bundle */
+/*** __ ***/
+
 let __ = {};
 
-__.pipe = 
-    (f, ...fs) => fs.length
-        ? (...xs) =>  __.pipe(...fs)(f(...xs))
-        : (...xs) => f(...xs);
+
+__.null = 
+    () => {};
+
+__.id =
+    x => x;
 
 __.return = 
     x => y => x;
 
-__.xs = 
-    f => xs => f(...xs);
-
-__.do = 
-    (...fs) => 
-        x => __.pipe(...fs, __.return(x))(x);
+__.X = 
+    f => X => f(...X);
 
 __.if = 
     (f,g,h) => 
         (...xs) => f(...xs) ? g(...xs) : h(...xs);
+
+__.pipe = 
+    (f=__.id, ...fs) => fs.length
+        ? (...xs) =>  __.pipe(...fs)(f(...xs))
+        : (...xs) => f(...xs);
+
+__.do = 
+    (f=__.id, ...fs) => fs.length
+        ? __.pipe(__.do(f), __.do(...fs))
+        : x => {f(x); return x} 
 
 __.not = 
     b => !b;
@@ -159,8 +169,8 @@ function vv (tag, attr, branch) {
             onUpdate
                 .push(__.if(
                     __.pipe(__.subKeys(...ks), __.emptyKeys),
-                    __.do(),
-                    __.do(h)
+                    __.null,
+                    h
                 ));
             return my;
         };
@@ -179,7 +189,7 @@ function vv (tag, attr, branch) {
                     my.model(),
                     update(e.detail, my.model())
             );
-            __.pipe(...onUpdate)(e.detail);
+            __.do(...onUpdate)(e.detail);
             return my.model();
         };
         if (!then.length || typeof then[0]  !== 'boolean') 
@@ -339,18 +349,23 @@ vv.emit = function (name, data) {
          evt => (typeof data === 'function')
             ? data(evt.target || evt)
             : data;
-
-    return evt => {
-        alert(name + '\n' + JSON.stringify(getData(evt || {})));
-        document
-            .dispatchEvent(new CustomEvent(
-                'vv#' + name,
-                { 
-                    bubbles: true,
-                    detail : getData(evt || {})
-                }
-            ));
-    }
+    let emit = 
+        evt => document.dispatchEvent(new CustomEvent(
+            'vv#' + name,
+            {
+                bubbles: true,
+                detail: getData(evt || {})
+            }
+        ));
+    let debug = 
+        evt => alert(
+            name + '\n' + 
+            JSON.stringify(getData(evt || {}), null, 2)
+        );
+    return __.if(__.return(vv.debug),
+        __.do(emit, debug),
+        emit
+    );
 }
 
 if (typeof window === 'undefined')

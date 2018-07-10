@@ -97,8 +97,8 @@ function vv (tag, attr, branch) {
             onUpdate
                 .push(__.if(
                     __.pipe(__.subKeys(...ks), __.emptyKeys),
-                    __.do(),
-                    __.do(h)
+                    __.null,
+                    h
                 ));
             return my;
         };
@@ -117,7 +117,7 @@ function vv (tag, attr, branch) {
                     my.model(),
                     update(e.detail, my.model())
             );
-            __.pipe(...onUpdate)(e.detail);
+            __.do(...onUpdate)(e.detail);
             return my.model();
         };
         if (!then.length || typeof then[0]  !== 'boolean') 
@@ -277,18 +277,23 @@ vv.emit = function (name, data) {
          evt => (typeof data === 'function')
             ? data(evt.target || evt)
             : data;
-
-    return evt => {
-        alert(name + '\n' + JSON.stringify(getData(evt || {})));
-        document
-            .dispatchEvent(new CustomEvent(
-                'vv#' + name,
-                { 
-                    bubbles: true,
-                    detail : getData(evt || {})
-                }
-            ));
-    }
+    let emit = 
+        evt => document.dispatchEvent(new CustomEvent(
+            'vv#' + name,
+            {
+                bubbles: true,
+                detail: getData(evt || {})
+            }
+        ));
+    let debug = 
+        evt => alert(
+            name + '\n' + 
+            JSON.stringify(getData(evt || {}), null, 2)
+        );
+    return __.if(__.return(vv.debug),
+        __.do(emit, debug),
+        emit
+    );
 }
 
 if (typeof window === 'undefined')
