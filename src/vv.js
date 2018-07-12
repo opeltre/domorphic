@@ -17,7 +17,7 @@ function vv (tag, attr, branch) {
         value :     '',
         plant :     null,
         properties: {},
-        svg:        tag === 'svg'
+        svg:        tag === 'svg' || tag === 'g'
     };
     var attributes = attr, 
         events = {};
@@ -241,21 +241,11 @@ function vv (tag, attr, branch) {
         if (Array.isArray(attr))
             [attr, branch] = [{}, attr];
         /** match "tagname#id.class.class2" **/
-        var re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)/g,
-            classes = [],
-            tagname = 'div',
-            matches = tag.match(re);
-        /** push to attributes **/
-        matches.forEach(m => {
-            if (m[0] === '#')
-                Object.assign(attr, {id: m.slice(1,)});
-            else if (m[0] === '.')
-                classes.push(m.slice(1,));
-            else
-                tagname = m.length ? m : 'div';
-        });
-        classes.length 
-            && Object.assign(attr, {class: classes.join(' ')});
+        let {classes, tagname, id} = vv.parse(tag);
+        if (id) 
+            Object.assign(attr, {id});
+        if (classes.length)
+            Object.assign(attr, {class: classes.join(' ')});
         /** parse branches **/
         branch = branch.map(parseBranch);
         /** out! **/
@@ -269,6 +259,26 @@ function vv (tag, attr, branch) {
     my._vv = true;
     return getset(my,self);
 }
+
+/*** parse ***/
+vv.parse = function (tag) {
+    /** match "tagname#id.class.class2" **/
+    let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)/g,
+        matches = tag.match(re);
+    let classes = [],
+        tagname = 'div',
+        id = null;
+    matches.forEach(m => {
+        if (m[0] === '#')
+            id =  m.slice(1,);
+        else if (m[0] === '.')
+            classes.push(m.slice(1,));
+        else
+            tagname = m.length ? m : 'div';
+    });
+    return {classes, tagname, id}
+};
+    
 
 /*** emit ***/
 vv.emit = function (name, data) {
@@ -303,6 +313,7 @@ if (typeof window === 'undefined')
 /* still wanted in global scope, e.g. for bmp2svg.
  * forEachKey, $, logthen... as well?
  */
+
 function forEachKey (obj) {
     return f => Object.keys(obj).forEach(f);
 }
@@ -319,4 +330,16 @@ function getset (obj, attrs) {
         key => obj[key] = method(key)
     );
     return obj;
+}
+
+function getsetExtends (obj, f) {
+
+    function obj2 (...args) {
+        obj(...args);
+        f(obj, ...args);
+    }
+    çç.forKeys(
+        (k,v) => obj2[k] = v
+    )(obj);
+    return my;
 }

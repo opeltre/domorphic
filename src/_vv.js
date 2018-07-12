@@ -1,38 +1,46 @@
-function _vv (name) {
- 
-    let app 
-        = _vv.get(name) 
-        || _vv.set(name, vv('#' + name));
+function _vv (name, svg) {
 
-    app.vnodes = app.vnodes || [];
-    
+    let tag = 
+        name => /#/.test(name) ? name : '#' + name;
+    let id = 
+        name => /#/.test(name) ? vv.parse(name).id : name;
+
+    let app 
+        = _vv.get(id(name)) 
+        || _vv.set(id(name), vv(tag(name)));
+
     app._name = name;
-    
+   
+    app.vnodes = app.vnodes || [];
+
     app.mount = 
-        (...ns) => {
-            if (! ns.length)
-                return app.vnodes;
-            app.vnodes = ns;
+        (dest, ...vnodes) => {
+
+            if (typeof dest !== 'string')
+                vnodes = [dest].concat(vnodes); dest = null;
+
+            let connect = 
+                ([n, attrs]) => __.forKeys(
+                    (arrow, values) => app.connect(arrow, n, values)
+                )(attrs || {});
+
+            let plant = 
+                ([n, attrs]) => _vv(n).plant(dest || app._name + '__' + n);
+
+            let push = 
+                ([n, _]) => app.vnodes.push(_vv(n));
+
+            vnodes.forEach(__.do(connect, plant, push));
             return app;
         }
 
-    let mount = 
-        (...ns) => ns.forEach(
-            ([n, attrs]) => __.forKeys(
-                (k, v) => app.connect(k, n, v)
-            )(attrs)
-        );
-
-    app.init =
-        () => {
-            mount(...app.vnodes);
-            return app;
-        };
+    app.gmount = 
+        (dest, ...vnodes) => app
+            .mount(dest, ...vnodes.map(([n, _]) => ['g#' + n, _]));
 
     app.connect = 
-        (k, n, v) => {
-            let [a, b, r] = app.arrow(k, n);
-            console.log(_vv.sig(a,b,r));
+        (arrow, n, v) => {
+            let [a, b, r] = app.arrow(arrow, n);
             if (typeof v === 'string')
                 v = v.split(/,?\s/);
             a.signal(_vv.sig(a,b,r), ...v);
@@ -47,21 +55,21 @@ function _vv (name) {
 
     app.starts = 
         (i,j) => {
-            if (vnodes[i] && vnodes[j])
-                vnodes[j].start(sig(i));
+            if (app.vnodes[i] && app.vnodes[j])
+                app.vnodes[j].start(sig(i));
             return app;
         }
 
     app.kills = 
         (i,j) => {
-            if (vnodes[i] && vnodes[j])
-                vnodes[j].kill(sig(i));
+            if (app.vnodes[i] && app.vnodes[j])
+                app.vnodes[j].kill(sig(i));
             return app;
         }
 
     app.stepwise = 
         j => {
-            vnodes.forEach(
+            app.vnodes.forEach(
                 (n,i) => app
                     .starts(i, j)
                     .kills(i, i+1)
@@ -83,3 +91,18 @@ _vv.set =
 _vv.sig = 
     (n1, n2, r) => `${n1._name} ${r ? '=' : '-'}> ${n2._name}`;
 
+/*** test ***
+
+_vv('frame')
+    .branch([
+        vv('svg#svg-frame', {width: "400px", height: "200px"})
+    ])
+    .gmount('#svg-frame', 
+        ['circle', {
+            '=>' : 'cPos'
+        }],
+        ['rect', {
+            '->': 'rPos'
+        }]
+    )();
+  */ 
