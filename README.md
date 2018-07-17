@@ -32,7 +32,7 @@ and silently updates on `'-> a'`.
 to propagate updates and refreshes of the `x, y, z` attributes
 of node `_vv('a')` to node `_vv('b')`.
 
-- Connect manier nodes with `vv.link`:
+- Connect manier nodes with `_vv.link`:
 
     ```
     _vv.link({
@@ -41,7 +41,7 @@ of node `_vv('a')` to node `_vv('b')`.
     })
     ```
 
-- Avoid loops, as: 
+- Avoid loops, as this would trigger an infinite loop. 
 
     ```
     _vv.link({
@@ -50,7 +50,7 @@ of node `_vv('a')` to node `_vv('b')`.
     })
     ```
 
-    *will* trigger an infinite loop.
+    
 
 ## todo: 
 
