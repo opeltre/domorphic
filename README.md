@@ -24,26 +24,27 @@ Redraw or passively update the model with `vv.update`.
 
 - Refer to the virtual node named `'a'` with `_vv('a')`.  
 
-- Node `_vv(a)` refreshes on `'=> a'`,  
+- Node `_vv(a)` refreshes on `'=> a'`
 and silently updates on `'-> a'`.
 
-- Use `_vv.connect('a -> b', 'x y z')` or `_vv.connect('a => b', 'x y z')`
-to propagate updates and refreshes of the `'x, y, z` attributes
+- Use `_vv.connect('a -> b', 'x', 'y', 'z')` or 
+`_vv.connect('a => b', 'x', 'y', 'z')`
+to propagate updates and refreshes of the `x, y, z` attributes
 of node `_vv('a')` to node `_vv('b')`.
 
 - Connect manier nodes with `vv.link`:
 
     ```
-    vv.link({
+    _vv.link({
         'a -> b': 'x y z',
         'b -> c': 'X Y Z'
     })
     ```
 
-- Avoid loops: 
+- Avoid loops, as: 
 
     ```
-    vv.link({
+    _vv.link({
         'a -> b': 'x',
         'b -> a': 'x'
     })
