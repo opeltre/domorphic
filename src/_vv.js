@@ -39,7 +39,8 @@ function _vv (name, svg) {
 
     app.connect = 
         (arrow, b, xs) => {
-            let sig = `${app._name} ${arrow} ${b}`;
+            let sig = 
+                _vv.sig(..._vv.arrow(`${app._name} ${arrow} ${b}`));
             _vv.connect(sig, xs);
             return app;
         }
