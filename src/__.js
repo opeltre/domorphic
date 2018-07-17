@@ -38,7 +38,8 @@ __.not =
     b => !b;
 
 __.logthen = 
-    x => {console.log(x); return x};
+    str => 
+        x => {console.log(str || 'logthen:'); console.log(x); return x};
 
 __.forKeys = 
     (...fs) => 
@@ -48,20 +49,20 @@ __.forKeys =
 
 __.mapKeys = 
     (...fs) => 
-        obj => Object.assign({}, 
-            ...Object.keys(obj).map(
-                k => __.pipe(...fs)(k, obj[k])
+        obj => {
+            let obj2 = {};
+            Object.keys(obj).forEach(
+                k => obj2[k] = __.pipe(...fs)(obj[k], k)
             )
-        ); 
+            return obj2;
+        };
 
 __.subKeys = 
     (...ks) => 
         obj => {
             let sub = {};
-            ks.forEach(k => {
-                if (obj[k] !== undefined) 
-                    sub[k] = obj[k];
-            });
+            ks.filter(k => (obj[k] !== undefined))
+                .forEach(k => sub[k] = obj[k]);
             return sub;
         };
 

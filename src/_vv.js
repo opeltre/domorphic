@@ -1,13 +1,11 @@
 function _vv (name, svg) {
 
-    let tag = 
-        name => /#/.test(name) ? name : '#' + name;
     let id = 
         name => /#/.test(name) ? vv.parse(name).id : name;
 
     let app 
         = _vv.get(id(name)) 
-        || _vv.set(id(name), vv(tag(name)));
+        || _vv.set(id(name), _vv.new(name));
 
     app._name = name;
    
@@ -16,8 +14,9 @@ function _vv (name, svg) {
     app.mount = 
         (dest, ...vnodes) => {
 
-            if (typeof dest !== 'string')
+            if (typeof dest !== 'string') {
                 vnodes = [dest].concat(vnodes); dest = null;
+            }
 
             let connect = 
                 ([n, attrs]) => __.forKeys(
@@ -39,19 +38,11 @@ function _vv (name, svg) {
             .mount(dest, ...vnodes.map(([n, _]) => ['g#' + n, _]));
 
     app.connect = 
-        (arrow, n, v) => {
-            let [a, b, r] = app.arrow(arrow, n);
-            if (typeof v === 'string')
-                v = v.split(/,?\s/);
-            a.signal(_vv.sig(a,b,r), ...v);
-            b.update(_vv.sig(a,b,r), d=>d, r);
+        (arrow, b, xs) => {
+            let sig = `${app._name} ${arrow} ${b}`;
+            _vv.connect(sig, xs);
             return app;
         }
-
-    app.arrow = 
-        (k, n) => k[1] === '>'
-            ? [app, _vv(n), k[0] === '=']
-            : [_vv(n), app, k[1] === '='];
 
     app.starts = 
         (i,j) => {
@@ -82,27 +73,50 @@ function _vv (name, svg) {
 
 _vv.nodes = {};
 
+_vv.new = 
+    n => vv(/#/.test(n) ? n : '#' + n)
+        .up('=> ' + n)
+        .up('-> ' + n, false);
+
 _vv.get = 
     id => _vv.nodes[id];
 
 _vv.set = 
-    (id, vnode) => _vv.nodes[id] = vnode;
+    (id, vnode) => {
+        _vv.nodes[id] = vnode;
+        return vnode;
+    }
 
 _vv.sig = 
-    (n1, n2, r) => `${n1._name} ${r ? '=' : '-'}> ${n2._name}`;
+    (a, b, r) => `${a._name} ${r ? '=' : '-'}> ${b._name}`;
 
-/*** test ***
+_vv.connect = 
+    (sig, xs) => {
 
-_vv('frame')
-    .branch([
-        vv('svg#svg-frame', {width: "400px", height: "200px"})
-    ])
-    .gmount('#svg-frame', 
-        ['circle', {
-            '=>' : 'cPos'
-        }],
-        ['rect', {
-            '->': 'rPos'
-        }]
-    )();
-  */ 
+            let [a, b, r] = _vv.arrow(sig);
+            a
+                .signal(sig, ...vv._(xs));
+            b
+                .update(sig, d=>d, r);
+            return _vv;
+        };
+
+_vv.link = 
+    __.forKeys(
+        (sig, xs) => _vv.connect(sig, vv._(xs))
+    )
+
+vv._ = 
+    xs => typeof xs === 'string'
+        ? xs.split(/,?\s/)
+        : xs;
+
+_vv.arrow = 
+    (sig) => {
+
+        let re = /(\w*)\s(<?[-=]>?)\s(\w*)/;
+        let [s, a, link, b] = sig.match(re);
+        return link[1] === '>'
+            ? [_vv(a), _vv(b), link[0] === '=']
+            : [_vv(b), _vv(a), link[1] === '='];
+    };

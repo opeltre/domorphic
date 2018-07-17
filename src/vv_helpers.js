@@ -1,18 +1,24 @@
 /*** vv_helpers ***/
 
 vv.input = 
-    (id, key=id, css='') => 
-        vv('input#' + id + css)
+    (id, key=id, css='') => {
+        let data = 
+            val => { let d = {}; d[key] = val; return d };
+        return vv('input#' + id + css)
             .html(M => M[key])
-            .on('input', vv.emit(id, t => t.value))
-            .up(id, (val => ({key: val})), false);
+            .on('input', vv.emit(id, t => data(t.value)))
+            .up(id, false);
+    }
 
 vv.textarea = 
-    (id, key=id, css='') => 
-        vv('textarea#'+ id + css)
-            .value(M => M[raw])
-            .on('change', vv.emit(id, t => t.value))
-            .up(id, (val => ({key: val})), false);
+    (id, key=id, css='') => {
+        let data = 
+            val => { let d = {}; d[key] = val; return d };
+        return vv('textarea#'+ id + css)
+            .value(M => M[key])
+            .on('change', vv.emit(id, t => data(t.value)))
+            .up(id, false);
+    }
 
 vv.table = 
     body => 

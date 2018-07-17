@@ -7,7 +7,6 @@ function vv (tag, attr, branch) {
     
     var self = {
         tag :       tag,
-        branch :    branch,
         stem :      null,
         node :      null,
         parentNode : null,
@@ -19,7 +18,8 @@ function vv (tag, attr, branch) {
         properties: {},
         svg:        tag === 'svg' || tag === 'g'
     };
-    var attributes = attr, 
+    let attributes = attr, 
+        branches = branch || [],
         events = {};
 
     function my (model, append = true) {
@@ -33,7 +33,7 @@ function vv (tag, attr, branch) {
             .nodeConf($m)
             .nodeAppend(append);
         /** branch **/
-        $m(my.branch()).map($m)
+        $m(branches).map($m)
             .map(b => b.link(my))
             .forEach(b => b(model));
         /** plant **/
@@ -42,18 +42,19 @@ function vv (tag, attr, branch) {
             : my.parentNode();
     }
 
+    my.branch = 
+       bs => {
+           branches = bs.map(parseBranch);
+           return my;
+       };
+
     my.modelUpdate =
         (...Ms) => my.model(Object.assign(my.model(), ...Ms)); 
    
     my.start = (when, model, append=true) => {
+        /* up ?? */
         if (when === 'now')
             return my(model, append);
-        if (when === 'dom') {
-            my.doc().addEventListener(
-                'DOMContentLoaded', 
-                () => my(model, append)
-            );
-        }
         else {
             let M = e => Object.assign(
                 my.model(),
@@ -90,16 +91,15 @@ function vv (tag, attr, branch) {
         return my;
     }
 
-    let onUpdate =  [d => d];
+    let onUpdate =  [];
 
     my.hook = 
-        (h, ...ks) => {
-            onUpdate
-                .push(__.if(
-                    __.pipe(__.subKeys(...ks), __.emptyKeys),
-                    __.null,
-                    h
-                ));
+        (hook, ...ks) => {
+            let h = __.pipe(
+                __.subKeys(...ks),
+                __.if(__.emptyKeys, __.null, hook)
+            );
+            onUpdate.push(h)
             return my;
         };
 
@@ -111,20 +111,24 @@ function vv (tag, attr, branch) {
      *  mail.hook('input -> mail')
      */
 
-    my.update = (evt, update=(d=>d), ...then) => {
-        let doUpdate = e => {
-            Object.assign(
-                    my.model(),
-                    update(e.detail, my.model())
-            );
-            __.do(...onUpdate)(e.detail);
-            return my.model();
-        };
+    my.update = (evt, update=__.id, ...then) => {
+        if (typeof update === 'boolean') {
+            then = [update].concat(then);
+            update = d => d;
+        }
         if (!then.length || typeof then[0]  !== 'boolean') 
             then = [true].concat(then);
         then[0] = then[0]
             ? my.redraw
             : () => my;
+        let doUpdate = e => {
+            Object.assign(
+                my.model(),
+                update(e.detail, my.model())
+            );
+            __.do(...onUpdate)(e.detail);
+            return my.model();
+        };
         let listener = __.pipe(doUpdate, ...then);
         my.doc().addEventListener('vv#'+evt, listener);
         return my;
@@ -134,10 +138,9 @@ function vv (tag, attr, branch) {
     my.redraw = 
         () => {
             let node =  my.node();
-            if (!node) 
-                return my();
-            let fragment = my(false, false);
-            node.replaceWith(fragment);
+            let fragment = my(false, !node);
+            if (node) 
+                node.replaceWith(fragment);
             return my;
         };
     
@@ -278,13 +281,23 @@ vv.parse = function (tag) {
     });
     return {classes, tagname, id}
 };
-    
 
 /*** emit ***/
-vv.emit = function (name, data) {
+
+vv.on = function (name, ...then) {
+    document.addEventListener(
+        'vv#' + name,
+        __.do(...then)
+    );
+}
+
+vv.emit = function (name, data={}, ...more) {
     
+    if (!name) 
+        return __.null;
+
     let getData = 
-         evt => (typeof data === 'function')
+         (evt = {}) => (typeof data === 'function')
             ? data(evt.target || evt)
             : data;
     let emit = 
@@ -292,22 +305,32 @@ vv.emit = function (name, data) {
             'vv#' + name,
             {
                 bubbles: true,
-                detail: getData(evt || {})
+                detail: getData(evt)
             }
         ));
     let debug = 
-        evt => alert(
-            name + '\n' + 
-            JSON.stringify(getData(evt || {}), null, 2)
+        evt => {
+            alert(name);
+            __.logthen(name)(getData(evt));
+        };
+    let handler = 
+        __.if(
+            () => vv.debug,
+            __.do(emit, debug),
+            emit
         );
-    return __.if(__.return(vv.debug),
-        __.do(emit, debug),
-        emit
-    );
+    return __.do(handler, vv.emit(...more));
+
 }
 
 if (typeof window === 'undefined')
     module.exports = vv;
+
+if (document) 
+    document.addEventListener(
+        'DOMContentLoaded', 
+        vv.emit('dom')
+    );
 
 /****** GETSET ******/
 /* still wanted in global scope, e.g. for bmp2svg.
@@ -338,7 +361,7 @@ function getsetExtends (obj, f) {
         obj(...args);
         f(obj, ...args);
     }
-    çç.forKeys(
+    __.forKeys(
         (k,v) => obj2[k] = v
     )(obj);
     return my;
