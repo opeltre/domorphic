@@ -27,8 +27,8 @@ Redraw or passively update the model with `vv.update`.
 - Node `_vv(a)` refreshes on `'=> a'`
 and silently updates on `'-> a'`.
 
-- Use `_vv.connect('a -> b', 'x', 'y', 'z')` or 
-`_vv.connect('a => b', 'x', 'y', 'z')`
+- Use `_vv.connect('a -> b', 'x y z')` or 
+`_vv.connect('a => b', 'x y z')`
 to propagate updates and refreshes of the `x, y, z` attributes
 of node `_vv('a')` to node `_vv('b')`.
 
@@ -41,7 +41,7 @@ of node `_vv('a')` to node `_vv('b')`.
     })
     ```
 
-- Avoid loops, as this would trigger an infinite loop. 
+- Avoid loops, as this would for now trigger an infinite loop. 
 
     ```
     _vv.link({
