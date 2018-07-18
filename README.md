@@ -1,4 +1,4 @@
-# virtual view
+# Virtual View of Evolutive Electronic Documents
 
 [examples](http://mathchat.fr:8083/vv)
 
@@ -22,15 +22,16 @@ Redraw or passively update the model with `vv.update`.
 
 ## Declare and connect virtual nodes
 
-- Refer to the virtual node named `'a'` with `_vv('a')`.  
+- Refer to the virtual node named `'eed'` with `_vv('eed')`.  
 
-- Node `_vv(a)` refreshes on `'=> a'`
+- Node `_vv('a')` refreshes on `'=> a'`
 and silently updates on `'-> a'`.
 
-- Use `_vv.connect('a -> b', 'x y z')` or 
-`_vv.connect('a => b', 'x y z')`
-to propagate updates and refreshes of the `x, y, z` attributes
-of node `_vv('a')` to node `_vv('b')`.
+- Use `_vv.connect('a -> b', 'x y z')` 
+to propagate updates of the `x, y, z` attributes
+of node `_vv('a')` to node `_vv('b')`, and
+`_vv.connect('a => b', 'x y z')` to propagate a refresh as well.
+
 
 - Connect manier nodes with `_vv.link`:
 
@@ -41,7 +42,7 @@ of node `_vv('a')` to node `_vv('b')`.
     })
     ```
 
-- Avoid loops, as this would for now trigger an infinite loop. 
+- Avoid loops, as this would, for now, trigger an infinite loop. 
 
     ```
     _vv.link({
