@@ -1,5 +1,8 @@
-# Virtual View of Evolutive Electronic Documents
+# vv
 
+```javascript
+_vv('eed') : Virtual View of Evolutive Electronic Documents
+```
 [examples](http://mathchat.fr:8083/vv)
 
 Just like this code, some examples were inspired by 
@@ -14,6 +17,13 @@ the [elm](http://elm-lang.org) language.
 
 `vv` basically returns a function that you feed with a model object.   
 It either acts on the DOM or passively returns a new document fragment.
+
+```javascript
+vv('#id.class', [
+    ['h1', [M => M.header]],
+    ['p', [M => M.body]]
+])
+```
 
 **Choose when to start it, choose when to update it and when to kill it**
 
@@ -35,7 +45,7 @@ of node `_vv('a')` to node `_vv('b')`, and
 
 - Connect manier nodes with `_vv.link`:
 
-    ```
+    ```javascript
     _vv.link({
         'a -> b': 'x y z',
         'b -> c': 'X Y Z'
@@ -44,7 +54,7 @@ of node `_vv('a')` to node `_vv('b')`, and
 
 - Avoid loops, as this would, for now, trigger an infinite loop. 
 
-    ```
+    ```javascript
     _vv.link({
         'a -> b': 'x',
         'b -> a': 'x'
