@@ -6,8 +6,9 @@ vv.input =
             val => { let d = {}; d[key] = val; return d };
         return vv('input#' + id + css)
             .html(M => M[key])
-            .on('input', vv.emit(id, t => data(t.value)))
-            .up(id, false);
+            .on('input', 
+                vv.emit('-> '+ id, t => data(t.value))
+            )
     }
 
 vv.textarea = 
@@ -16,8 +17,8 @@ vv.textarea =
             val => { let d = {}; d[key] = val; return d };
         return vv('textarea#'+ id + css)
             .value(M => M[key])
-            .on('change', vv.emit(id, t => data(t.value)))
-            .up(id, false);
+            .on('change', 
+                vv.emit('-> ' + id, t => data(t.value)))
     }
 
 vv.table = 

@@ -44,30 +44,20 @@ function _vv (name, svg) {
             _vv.connect(sig, xs);
             return app;
         }
-
-    app.starts = 
-        (i,j) => {
-            if (app.vnodes[i] && app.vnodes[j])
-                app.vnodes[j].start(sig(i));
-            return app;
-        }
-
-    app.kills = 
-        (i,j) => {
-            if (app.vnodes[i] && app.vnodes[j])
-                app.vnodes[j].kill(sig(i));
-            return app;
-        }
-
+    
     app.stepwise = 
         j => {
+            let starts = (a,b) => b.start('=> ' + a._name),
+                kills = (a,b) => b.kill('=> ' + a._name),
+                get = (i) => app.vnodes[i];
             app.vnodes.forEach(
-                (n,i) => app
-                    .starts(i, j)
-                    .kills(i, i+1)
+                (a,i) => { 
+                    if (get(i+j)) starts(a, get(i+j));
+                    if (get(i-1)) kills(a, get(i-1));
+                }
             );
             return app;
-        }
+        };
 
     return app;
 }
@@ -77,7 +67,8 @@ _vv.nodes = {};
 _vv.new = 
     n => vv(/#/.test(n) ? n : '#' + n)
         .up('=> ' + n)
-        .up('-> ' + n, false);
+        .up('-> ' + n, false)
+        .kill('!> ' + n);
 
 _vv.get = 
     id => _vv.nodes[id];
@@ -96,7 +87,7 @@ _vv.connect =
 
             let [a, b, r] = _vv.arrow(sig);
             a
-                .signal(sig, ...vv._(xs));
+                .signal(xs, sig);
             b
                 .update(sig, d=>d, r);
             return _vv;

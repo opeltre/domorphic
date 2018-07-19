@@ -38,9 +38,12 @@ __.do =
 __.not = 
     b => !b;
 
-__.logthen = 
+__.log = 
+    x => {console.log(x); return x};
+
+__.logs = 
     str => 
-        x => {console.log(str || 'logthen:'); console.log(x); return x};
+        x => {__.log(str || 'logs:'); return  __.log(x)};
 
 __.forKeys = 
     (...fs) => 
@@ -89,7 +92,7 @@ function vv (tag, attr, branch) {
         node :      null,
         parentNode : null,
         model :     {},
-        doc :       document,
+        doc :       vv.document,
         html :      '',
         value :     '',
         plant :     null,
@@ -169,25 +172,21 @@ function vv (tag, attr, branch) {
         return my;
     }
 
-    let onUpdate =  [];
+    my._onUpdate =  [];
 
     my.hook = 
-        (hook, ...ks) => {
-            let h = __.pipe(
-                __.subKeys(...ks),
-                __.if(__.emptyKeys, __.null, hook)
-            );
-            onUpdate.push(h)
+        (xs, ...hooks) => {
+            let hook = data => {
+                let d = __.subKeys(...vv._(xs))(data || {});
+                if (!__.emptyKeys(d))
+                    __.do(...hooks)(d, my.model());
+            }
+            my._onUpdate.push(hook);
             return my;
         };
 
     my.signal = 
-        (sig, ...ks) => my.hook(vv.emit(sig, d => d), ...ks);
-
-    /*
-     *  input.signal('input -> mail', 'raw, from, to, subject')
-     *  mail.hook('input -> mail')
-     */
+        (xs, sig) => my.hook(xs, vv.emit(sig, d => d));
 
     my.update = (evt, update=__.id, ...then) => {
         if (typeof update === 'boolean') {
@@ -204,7 +203,7 @@ function vv (tag, attr, branch) {
                 my.model(),
                 update(e.detail, my.model())
             );
-            __.do(...onUpdate)(e.detail);
+            __.do(...my._onUpdate)(e.detail, my.model());
             return my.model();
         };
         let listener = __.pipe(doUpdate, ...then);
@@ -363,7 +362,7 @@ vv.parse = function (tag) {
 /*** emit ***/
 
 vv.on = function (name, ...then) {
-    document.addEventListener(
+    vv.document.addEventListener(
         'vv#' + name,
         __.do(...then)
     );
@@ -379,7 +378,7 @@ vv.emit = function (name, data={}, ...more) {
             ? data(evt.target || evt)
             : data;
     let emit = 
-        evt => document.dispatchEvent(new CustomEvent(
+        evt => vv.document.dispatchEvent(new CustomEvent(
             'vv#' + name,
             {
                 bubbles: true,
@@ -389,7 +388,7 @@ vv.emit = function (name, data={}, ...more) {
     let debug = 
         evt => {
             alert(name);
-            __.logthen(name)(getData(evt));
+            __.logs(name)(getData(evt));
         };
     let handler = 
         __.if(
@@ -401,14 +400,14 @@ vv.emit = function (name, data={}, ...more) {
 
 }
 
-if (typeof window === 'undefined')
-    module.exports = vv;
+vv.document = (typeof document === 'undefined') 
+    ? {dispatchEvent: __.null, addEventListener: __.null}
+    : document;
 
-if (document) 
-    document.addEventListener(
-        'DOMContentLoaded', 
-        vv.emit('dom')
-    );
+vv.document.addEventListener(
+    'DOMContentLoaded', 
+    vv.emit('dom')
+);
 
 /****** GETSET ******/
 /* still wanted in global scope, e.g. for bmp2svg.
@@ -490,30 +489,20 @@ function _vv (name, svg) {
             _vv.connect(sig, xs);
             return app;
         }
-
-    app.starts = 
-        (i,j) => {
-            if (app.vnodes[i] && app.vnodes[j])
-                app.vnodes[j].start(sig(i));
-            return app;
-        }
-
-    app.kills = 
-        (i,j) => {
-            if (app.vnodes[i] && app.vnodes[j])
-                app.vnodes[j].kill(sig(i));
-            return app;
-        }
-
+    
     app.stepwise = 
         j => {
+            let starts = (a,b) => b.start('=> ' + a._name),
+                kills = (a,b) => b.kill('=> ' + a._name),
+                get = (i) => app.vnodes[i];
             app.vnodes.forEach(
-                (n,i) => app
-                    .starts(i, j)
-                    .kills(i, i+1)
+                (a,i) => { 
+                    if (get(i+j)) starts(a, get(i+j));
+                    if (get(i-1)) kills(a, get(i-1));
+                }
             );
             return app;
-        }
+        };
 
     return app;
 }
@@ -523,7 +512,8 @@ _vv.nodes = {};
 _vv.new = 
     n => vv(/#/.test(n) ? n : '#' + n)
         .up('=> ' + n)
-        .up('-> ' + n, false);
+        .up('-> ' + n, false)
+        .kill('!> ' + n);
 
 _vv.get = 
     id => _vv.nodes[id];
@@ -542,7 +532,7 @@ _vv.connect =
 
             let [a, b, r] = _vv.arrow(sig);
             a
-                .signal(sig, ...vv._(xs));
+                .signal(xs, sig);
             b
                 .update(sig, d=>d, r);
             return _vv;
@@ -575,8 +565,9 @@ vv.input =
             val => { let d = {}; d[key] = val; return d };
         return vv('input#' + id + css)
             .html(M => M[key])
-            .on('input', vv.emit(id, t => data(t.value)))
-            .up(id, false);
+            .on('input', 
+                vv.emit('-> '+ id, t => data(t.value))
+            )
     }
 
 vv.textarea = 
@@ -585,8 +576,8 @@ vv.textarea =
             val => { let d = {}; d[key] = val; return d };
         return vv('textarea#'+ id + css)
             .value(M => M[key])
-            .on('change', vv.emit(id, t => data(t.value)))
-            .up(id, false);
+            .on('change', 
+                vv.emit('-> ' + id, t => data(t.value)))
     }
 
 vv.table = 
@@ -628,46 +619,4 @@ vv.ajax = function (data) {
     my.del = my.delete;
     return my;
 }
-/*** test ***/
-/*
-['a', 'b'].forEach(
-    k => vnode(k,'x','y')
-)
-*/
-vnode('a', 'x y');
-vnode('b', 'x y');
-
-_vv.link({
-    'a -> b': 'x',
-    'a <= b': 'y'
-});
-//_vv.connect('a -> b', 'x')
-//_vv.connect('a <= b', 'y')
-
-vv.on('dom', 
-    vv.emit(    
-        '=> a', {x: 0}, 
-        '=> b', {y:1}
-    )
-);
-
-function vnode (n, xs) {
-    return _vv(n)
-        .plant('#win')
-        .branch([
-            ['h5', [n]],
-            ...vv._(xs).map(k => 
-                ['pre', [ 
-                    vv('code')
-                        .html(M => `${n}.${k} -> ${M[k]}`) 
-                ]]
-            )
-        ])
-}
-
-/*
-_vv.connect({
-    'a -> b': 'x',
-    'a <= b': 'y'
-})
-*/
+if (typeof window === 'undefined') {    module.exports = {vv, _vv};    }

@@ -11,7 +11,7 @@ function vv (tag, attr, branch) {
         node :      null,
         parentNode : null,
         model :     {},
-        doc :       document,
+        doc :       vv.document,
         html :      '',
         value :     '',
         plant :     null,
@@ -91,25 +91,21 @@ function vv (tag, attr, branch) {
         return my;
     }
 
-    let onUpdate =  [];
+    my._onUpdate =  [];
 
     my.hook = 
-        (hook, ...ks) => {
-            let h = __.pipe(
-                __.subKeys(...ks),
-                __.if(__.emptyKeys, __.null, hook)
-            );
-            onUpdate.push(h)
+        (xs, ...hooks) => {
+            let hook = data => {
+                let d = __.subKeys(...vv._(xs))(data || {});
+                if (!__.emptyKeys(d))
+                    __.do(...hooks)(d, my.model());
+            }
+            my._onUpdate.push(hook);
             return my;
         };
 
     my.signal = 
-        (sig, ...ks) => my.hook(vv.emit(sig, d => d), ...ks);
-
-    /*
-     *  input.signal('input -> mail', 'raw, from, to, subject')
-     *  mail.hook('input -> mail')
-     */
+        (xs, sig) => my.hook(xs, vv.emit(sig, d => d));
 
     my.update = (evt, update=__.id, ...then) => {
         if (typeof update === 'boolean') {
@@ -126,7 +122,7 @@ function vv (tag, attr, branch) {
                 my.model(),
                 update(e.detail, my.model())
             );
-            __.do(...onUpdate)(e.detail);
+            __.do(...my._onUpdate)(e.detail, my.model());
             return my.model();
         };
         let listener = __.pipe(doUpdate, ...then);
@@ -285,7 +281,7 @@ vv.parse = function (tag) {
 /*** emit ***/
 
 vv.on = function (name, ...then) {
-    document.addEventListener(
+    vv.document.addEventListener(
         'vv#' + name,
         __.do(...then)
     );
@@ -301,7 +297,7 @@ vv.emit = function (name, data={}, ...more) {
             ? data(evt.target || evt)
             : data;
     let emit = 
-        evt => document.dispatchEvent(new CustomEvent(
+        evt => vv.document.dispatchEvent(new CustomEvent(
             'vv#' + name,
             {
                 bubbles: true,
@@ -311,7 +307,7 @@ vv.emit = function (name, data={}, ...more) {
     let debug = 
         evt => {
             alert(name);
-            __.logthen(name)(getData(evt));
+            __.logs(name)(getData(evt));
         };
     let handler = 
         __.if(
@@ -323,14 +319,14 @@ vv.emit = function (name, data={}, ...more) {
 
 }
 
-if (typeof window === 'undefined')
-    module.exports = vv;
+vv.document = (typeof document === 'undefined') 
+    ? {dispatchEvent: __.null, addEventListener: __.null}
+    : document;
 
-if (document) 
-    document.addEventListener(
-        'DOMContentLoaded', 
-        vv.emit('dom')
-    );
+vv.document.addEventListener(
+    'DOMContentLoaded', 
+    vv.emit('dom')
+);
 
 /****** GETSET ******/
 /* still wanted in global scope, e.g. for bmp2svg.

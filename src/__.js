@@ -37,9 +37,12 @@ __.do =
 __.not = 
     b => !b;
 
-__.logthen = 
+__.log = 
+    x => {console.log(x); return x};
+
+__.logs = 
     str => 
-        x => {console.log(str || 'logthen:'); console.log(x); return x};
+        x => {__.log(str || 'logs:'); return  __.log(x)};
 
 __.forKeys = 
     (...fs) => 
