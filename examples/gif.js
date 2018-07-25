@@ -1,5 +1,5 @@
 let gifs  = {};
-let logthen = x => {console.log(x); return x};
+gifs.url = "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=";
 
 gifs.initModel = {
     gifSrc: 'https://media3.giphy.com/media/WoCxkkpiweO6Q/giphy.gif',
@@ -7,36 +7,36 @@ gifs.initModel = {
     topic: 'cat'
 };
 
-gifs.url = "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag="
+
+/*** more gif ***/
 
 gifs.moreGif =
-    topic => {
-        console.log(topic);
-        vv.ajax()
-            .get(gifs.url + topic)
-            .then(JSON.parse)
-            .then(res => res.data.image_url)
-            .then(logthen)
-            .then(src => vv.emit('gif.new', {gifSrc: src})());
-    }
-
-gifs.onGif = 
-    d => d;
-
-gifs.img =
-    vv('img')
-        .attr({src: M => M.gifSrc})
-        .up('gif.new', gifs.onGif)
+    topic => vv.ajax()
+        .get(gifs.url + topic)
+        .then(JSON.parse)
+        .then(res => res.data.image_url)
+        .then(src => vv.emit('gif.new', {gifSrc: src})());
 
 gifs.buttonMore =
     vv('button', ['more Gif!'])
         .on('click', (t,M) => gifs.moreGif(M.topic));
+
+gifs.img =
+    vv('img')
+        .attr({src: M => M.gifSrc})
+        .up('gif.new')
+
+
+/*** choose the topic ***/
 
 gifs.inputTopic =
     vv('input')
         .value(M => M.topic)
         .on('change', vv.emit('gif.type', t => t.value))
         .up('gif.type', (d,M) => ({topic : d}), false);
+
+
+/*** main view ***/
 
 gifs.view = 
     vv('div')
@@ -52,7 +52,10 @@ gifs.view =
         .plant('#gif-view')
         .start('gif.init');
 
-gifs.initButton = 
+
+/*** opt-in to enter the gif loop ***/
+
+gifs.buttonInit = 
     vv('button', ['...sure?'])
         .plant('#gif-init')
         .on('click', vv.emit('gif.init'))
@@ -61,7 +64,7 @@ gifs.initButton =
 vv('.example')
     .branch([
         vv('h2', ['ajax example']),
-        gifs.initButton,
+        gifs.buttonInit,
         vv('#gif-view')
     ])
     .plant('#examples')
