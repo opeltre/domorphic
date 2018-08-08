@@ -76,6 +76,24 @@ __.emptyKeys =
         return out;
     };
 
+__.toKeys = 
+    pairs => {
+        let out = {};
+        pairs.forEach(
+            ([v, k]) => out[k] = v
+        )
+        return out;
+    };
+
+__.toPairs = 
+    obj => {
+        let out = [];
+        __.forKeys(
+            (v,k) => out.push([v,k])
+        );
+        return out;
+    };
+
 /* misc */
 
 __.getset = getset;
