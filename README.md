@@ -1,3 +1,7 @@
+# todo:
+
+- chill
+
 # vv
 
 ```javascript
@@ -60,10 +64,3 @@ of node `_vv('a')` to node `_vv('b')`, and
         'b -> a': 'x'
     })
     ```
-
-    
-
-## todo: 
-
-* import vv-backend
-
