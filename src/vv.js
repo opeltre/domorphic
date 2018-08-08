@@ -336,29 +336,3 @@ vv.document.addEventListener(
 function forEachKey (obj) {
     return f => Object.keys(obj).forEach(f);
 }
-
-function getset (obj, attrs) {
-    let method = 
-        key => function (x) {
-            if (!arguments.length)
-                return attrs[key];
-            attrs[key] = x;
-            return obj;
-        };
-    forEachKey(attrs)(
-        key => obj[key] = method(key)
-    );
-    return obj;
-}
-
-function getsetExtends (obj, f) {
-
-    function obj2 (...args) {
-        obj(...args);
-        f(obj, ...args);
-    }
-    __.forKeys(
-        (k,v) => obj2[k] = v
-    )(obj);
-    return my;
-}

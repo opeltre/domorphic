@@ -12,7 +12,7 @@ do
 done
 
 echo "if (typeof window === 'undefined') {\
-    module.exports = {vv, _vv};\
+    module.exports = {vv, _vv, __};\
     }" >> $vv/$bundle
 
 echo "...done"

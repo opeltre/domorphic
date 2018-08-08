@@ -75,6 +75,35 @@ __.emptyKeys =
         __.forKeys(k => out = false)(obj);
         return out;
     };
-        
 
+/* misc */
 
+__.getset = getset;
+
+__.sleep = 
+    ms => new Promise(then => setTimeout(then, ms));
+
+__.range =
+    n => {
+        let out = [];
+        for (var i=0; i<n; i++) {
+            out.push(i);
+        }
+        return out;
+    }
+
+/* getset */
+
+function getset (obj, attrs) {
+    let method = 
+        key => function (x) {
+            if (!arguments.length)
+                return attrs[key];
+            attrs[key] = x;
+            return obj;
+        };
+    forEachKey(attrs)(
+        key => obj[key] = method(key)
+    );
+    return obj;
+}

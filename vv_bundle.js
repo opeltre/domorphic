@@ -76,9 +76,38 @@ __.emptyKeys =
         __.forKeys(k => out = false)(obj);
         return out;
     };
-        
 
+/* misc */
 
+__.getset = getset;
+
+__.sleep = 
+    ms => new Promise(then => setTimeout(then, ms));
+
+__.range =
+    n => {
+        let out = [];
+        for (var i=0; i<n; i++) {
+            out.push(i);
+        }
+        return out;
+    }
+
+/* getset */
+
+function getset (obj, attrs) {
+    let method = 
+        key => function (x) {
+            if (!arguments.length)
+                return attrs[key];
+            attrs[key] = x;
+            return obj;
+        };
+    forEachKey(attrs)(
+        key => obj[key] = method(key)
+    );
+    return obj;
+}
 /* 
  * L'ARBRE DOM VIRTUEL
  */
@@ -417,32 +446,6 @@ vv.document.addEventListener(
 function forEachKey (obj) {
     return f => Object.keys(obj).forEach(f);
 }
-
-function getset (obj, attrs) {
-    let method = 
-        key => function (x) {
-            if (!arguments.length)
-                return attrs[key];
-            attrs[key] = x;
-            return obj;
-        };
-    forEachKey(attrs)(
-        key => obj[key] = method(key)
-    );
-    return obj;
-}
-
-function getsetExtends (obj, f) {
-
-    function obj2 (...args) {
-        obj(...args);
-        f(obj, ...args);
-    }
-    __.forKeys(
-        (k,v) => obj2[k] = v
-    )(obj);
-    return my;
-}
 function _vv (name, svg) {
 
     let id = 
@@ -619,4 +622,4 @@ vv.ajax = function (data) {
     my.del = my.delete;
     return my;
 }
-if (typeof window === 'undefined') {    module.exports = {vv, _vv};    }
+if (typeof window === 'undefined') {    module.exports = {vv, _vv, __};    }
