@@ -1,66 +1,63 @@
-# todo:
+# forest
 
-- chill
+[forest.js](http://mathchat.fr:8083/vv)
+is a plain javascript program to design virtual views.
+A DOM templating philosophy based on js functions and events for dynamism.
 
-# vv
+### functional trees
 
-```javascript
-_vv('eed') : Virtual View of Evolutive Electronic Documents
-```
-[examples](http://mathchat.fr:8083/vv)
-
-Just like this code, some examples were inspired by 
-the [elm](http://elm-lang.org) language.
-
-## Plain js dynamic templating
-
-* lightweight syntax to design the DOM
-* functional and event-based for dynamism
-
-**Virtual design of the DOM architecture**
-
-`vv` basically returns a function that you feed with a model object.   
-It either acts on the DOM or passively returns a new document fragment.
+A forest consists of trees. 
+Trees constructed by `fst` are basically functions 
+taking a model object to return a html document fragment.
 
 ```javascript
-vv('#id.class', [
-    ['h1', [M => M.header]],
-    ['p', [M => M.body]]
-])
+//  tree :: Model -> Html 
+let tree = 
+    fst('div#fst', [
+        ['h6', ['fst']],
+        ['p', ['a forest of DOM subtrees']],
+        ['p#msg', [Model => Model.msg]]
+    ]);
+
+//  fragment :: Html 
+let fragment = 
+    tree({msg: 'allo allo'});
 ```
 
-**Choose when to start it, choose when to update it and when to kill it**
+Calling a tree also has effects on the current document by default,
+just specify a negative drawing boolean as other argument if you have pure wishes.
 
-Hook on events dispatched by `vv.emit`,   
-Redraw or passively update the model with `vv.update`.
+```javascript
+let fragment = tree({msg: 'allo allo'}, false);
+```
 
-## Declare and connect virtual nodes
+### eventful forest
 
-- Refer to the virtual node named `'eed'` with `_vv('eed')`.  
+Trees listen to the forest's events `fst.emit` instances dispatch 
+to refresh themselves, their html foliage ondulating
+in the DOM wind in the meantime.
 
-- Node `_vv('a')` refreshes on `'=> a'`
-and silently updates on `'-> a'`.
+```javascript
+//  listener :: Data -> Model 
+let listener = 
+    Data => ({ msg => Data.msg });
 
-- Use `_vv.connect('a -> b', 'x y z')` 
-to propagate updates of the `x, y, z` attributes
-of node `_vv('a')` to node `_vv('b')`, and
-`_vv.connect('a => b', 'x y z')` to propagate a refresh as well.
+//  emitter :: Event -> Data
+let emitter = 
+    fst.emit(
+        'msg',
+        Event => ({msg: 'listen carefully, I shall say this only once'})
+    );
 
+/*  hooks */ 
+tree.on('click', emitter);
+tree.up('msg', listener);
+```
 
-- Connect manier nodes with `_vv.link`:
+Trees may akso hook to a passive update of their model
+when a negative redraw argument is added.
 
-    ```javascript
-    _vv.link({
-        'a -> b': 'x y z',
-        'b -> c': 'X Y Z'
-    })
-    ```
+```javascript 
+tree.up('msg', listener, false);
+```
 
-- Avoid loops, as this would, for now, trigger an infinite loop. 
-
-    ```javascript
-    _vv.link({
-        'a -> b': 'x',
-        'b -> a': 'x'
-    })
-    ```
