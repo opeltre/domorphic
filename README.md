@@ -1,14 +1,20 @@
 [forest.js](http://mathchat.fr:8083/vv)
-is a plain javascript program to design virtual views.   
-A DOM templating philosophy based on js functions and events for dynamism.
+is a plain javascript program to design virtual views ---
+a DOM templating philosophy based on js functions and events for dynamism.
 
 ## The forest
+
+```     
+         .-<-. 
+    D -->|   M --> Html D
+         `->-'
+```
 
 ### Functional trees
 
 A forest consists of trees. 
-Trees constructed by `fst` are basically functions 
-taking a model object to return a html document fragment.
+A tree constructed by `fst` is a function 
+taking in a model object to return a html document fragment.
 
 ```javascript
 //  tree :: Model -> Html 
@@ -19,16 +25,17 @@ let tree =
         ['p#msg', [Model => Model.msg]]
     ]);
 
-//  fragment :: Html 
-let fragment = 
+//  node :: Effect Html 
+let node = 
     tree({msg: 'allo allo'});
-```
 
-Calling a tree also has effects on the current document by default,
-just specify a negative drawing boolean as other argument if you have pure wishes.
+/*  Calling a tree has effects on the current document by default,
+ *  specify a negative drawing boolean as other argument if you have pure wishes.
+ */
 
-```javascript
-let fragment = tree({msg: 'allo allo'}, false);
+//  fragment :: Html
+let fragment = 
+    tree({msg: 'allo allo', false'});
 ```
 
 ### Eventful forest
