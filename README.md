@@ -1,5 +1,5 @@
 [forest.js](http://mathchat.fr:8083/vv)
-is a plain javascript program to design virtual views.
+is a plain javascript program to design virtual views.   
 A DOM templating philosophy based on js functions and events for dynamism.
 
 ## The forest
