@@ -1,10 +1,10 @@
-# forest
-
 [forest.js](http://mathchat.fr:8083/vv)
 is a plain javascript program to design virtual views.
 A DOM templating philosophy based on js functions and events for dynamism.
 
-### functional trees
+## The forest
+
+### Functional trees
 
 A forest consists of trees. 
 Trees constructed by `fst` are basically functions 
@@ -31,7 +31,7 @@ just specify a negative drawing boolean as other argument if you have pure wishe
 let fragment = tree({msg: 'allo allo'}, false);
 ```
 
-### eventful forest
+### Eventful forest
 
 Trees listen to the forest's events `fst.emit` instances dispatch 
 to refresh themselves, their html foliage ondulating
