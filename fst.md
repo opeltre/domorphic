@@ -1,4 +1,5 @@
 ```javascript
+/*
 Html :: 
     DOM objects 
 
@@ -23,4 +24,5 @@ tree( Data ) :: Data -> Html( Data )
 tree( Model, Data ) :: Model -> html( Data )
 
 tree.listen :: Str -> (Data -> Model) ~> eff( Html )
+*/
 ```
