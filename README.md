@@ -17,7 +17,7 @@ A tree constructed by `fst` is a function
 taking in a model object to return a html document fragment.
 
 ```javascript
-//  tree :: Model -> Html 
+//  tree :: Model -> html( Data ) 
 let tree = 
     fst('div#fst', [
         ['h6', ['fst']],
@@ -25,7 +25,7 @@ let tree =
         ['p#msg', [Model => Model.msg]]
     ]);
 
-//  node :: Effect Html 
+//  node :: effect( Html ) 
 let node = 
     tree({msg: 'allo allo'});
 
@@ -49,7 +49,7 @@ in the DOM wind in the meantime.
 let listener = 
     Data => ({ msg => Data.msg });
 
-//  emitter :: Event -> Data
+//  emitter :: html( Data )
 let emitter = 
     fst.emit(
         'msg',
@@ -67,4 +67,3 @@ when a negative redraw argument is added.
 ```javascript 
 tree.up('msg', listener, false);
 ```
-
