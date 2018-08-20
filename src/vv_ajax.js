@@ -1,6 +1,6 @@
 /*** ajax ***/
 
-vv.ajax = function (data) {
+fst.ajax = function (data) {
 
     let my = {},
         xhr = new XMLHttpRequest();

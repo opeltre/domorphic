@@ -1,7 +1,7 @@
 /* 
  * L'ARBRE DOM VIRTUEL
  */
-function vv (tag, attr, branch) {
+function fst (tag, attr, branch) {
 
     var {tag, attr, branch} = parse(tag, attr, branch);
     
@@ -11,7 +11,7 @@ function vv (tag, attr, branch) {
         node :      null,
         parentNode : null,
         model :     {},
-        doc :       vv.document,
+        doc :       fst.document,
         html :      '',
         value :     '',
         plant :     null,
@@ -62,7 +62,7 @@ function vv (tag, attr, branch) {
                 e.detail
             );
             my.doc().addEventListener(
-                'vv#' + when,
+                'fst#' + when,
                  e => my(M(e), append)
             );
         }
@@ -74,7 +74,7 @@ function vv (tag, attr, branch) {
             my.node().remove();
         else {
             my.doc().addEventListener(
-                'vv#' + when,
+                'fst#' + when,
                 () => my.node().remove()
             );
         }
@@ -96,7 +96,7 @@ function vv (tag, attr, branch) {
     my.hook = 
         (xs, ...hooks) => {
             let hook = data => {
-                let d = __.subKeys(...vv._(xs))(data || {});
+                let d = __.subKeys(...fst._(xs))(data || {});
                 if (!__.emptyKeys(d))
                     __.do(...hooks)(d, my.model());
             }
@@ -105,7 +105,7 @@ function vv (tag, attr, branch) {
         };
 
     my.signal = 
-        (xs, sig) => my.hook(xs, vv.emit(sig, d => d));
+        (xs, sig) => my.hook(xs, fst.emit(sig, d => d));
 
     my.update = (evt, update=__.id, ...then) => {
         if (typeof update === 'boolean') {
@@ -126,7 +126,7 @@ function vv (tag, attr, branch) {
             return my.model();
         };
         let listener = __.pipe(doUpdate, ...then);
-        my.doc().addEventListener('vv#'+evt, listener);
+        my.doc().addEventListener('fst#'+evt, listener);
         return my;
     }
     my.up = my.update;
@@ -227,11 +227,11 @@ function vv (tag, attr, branch) {
     function parseBranch (b) {
         let t = x => (typeof x);
         if (t(b) === 'string' || isModelFunction(b))
-            return vv('text').html(b)
+            return fst('text').html(b)
         if (Array.isArray(b)) 
             return (t(b[0]) === 'function')
                 ? b 
-                : vv(...b);
+                : fst(...b);
         return b
     }
 
@@ -240,7 +240,7 @@ function vv (tag, attr, branch) {
         if (Array.isArray(attr))
             [attr, branch] = [{}, attr];
         /** match "tagname#id.class.class2" **/
-        let {classes, tagname, id} = vv.parse(tag);
+        let {classes, tagname, id} = fst.parse(tag);
         if (id) 
             Object.assign(attr, {id});
         if (classes.length)
@@ -252,15 +252,15 @@ function vv (tag, attr, branch) {
     }
 
     function isModelFunction (x) {
-        return (typeof x === 'function' && !x._vv);
+        return (typeof x === 'function' && !x._fst);
     }
 
-    my._vv = true;
+    my._fst = true;
     return getset(my,self);
 }
 
 /*** parse ***/
-vv.parse = function (tag) {
+fst.parse = function (tag) {
     /** match "tagname#id.class.class2" **/
     let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)/g,
         matches = tag.match(re);
@@ -280,14 +280,14 @@ vv.parse = function (tag) {
 
 /*** emit ***/
 
-vv.on = function (name, ...then) {
-    vv.document.addEventListener(
-        'vv#' + name,
+fst.on = function (name, ...then) {
+    fst.document.addEventListener(
+        'fst#' + name,
         __.do(...then)
     );
 }
 
-vv.emit = function (name, data={}, ...more) {
+fst.emit = function (name, data={}, ...more) {
     
     if (!name) 
         return __.null;
@@ -297,8 +297,8 @@ vv.emit = function (name, data={}, ...more) {
             ? data(evt.target || evt)
             : data;
     let emit = 
-        evt => vv.document.dispatchEvent(new CustomEvent(
-            'vv#' + name,
+        evt => fst.document.dispatchEvent(new CustomEvent(
+            'fst#' + name,
             {
                 bubbles: true,
                 detail: getData(evt)
@@ -311,21 +311,21 @@ vv.emit = function (name, data={}, ...more) {
         };
     let handler = 
         __.if(
-            () => vv.debug,
+            () => fst.debug,
             __.do(emit, debug),
             emit
         );
-    return __.do(handler, vv.emit(...more));
+    return __.do(handler, fst.emit(...more));
 
 }
 
-vv.document = (typeof document === 'undefined') 
+fst.document = (typeof document === 'undefined') 
     ? {dispatchEvent: __.null, addEventListener: __.null}
     : document;
 
-vv.document.addEventListener(
+fst.document.addEventListener(
     'DOMContentLoaded', 
-    vv.emit('dom')
+    fst.emit('dom')
 );
 
 /****** GETSET ******/

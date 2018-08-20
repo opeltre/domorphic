@@ -1,11 +1,11 @@
-function _vv (name, svg) {
+function fst._(name, svg) {
 
     let id = 
-        name => /#/.test(name) ? vv.parse(name).id : name;
+        name => /#/.test(name) ? fst.parse(name).id : name;
 
     let app 
-        = _vv.get(id(name)) 
-        || _vv.set(id(name), _vv.new(name));
+        = fst._get(id(name)) 
+        || fst._set(id(name), fst._new(name));
 
     app._name = name;
    
@@ -24,10 +24,10 @@ function _vv (name, svg) {
                 )(attrs || {});
 
             let plant = 
-                ([n, attrs]) => _vv(n).plant(dest || app._name + '__' + n);
+                ([n, attrs]) => fst._(n).plant(dest || app._name + '__' + n);
 
             let push = 
-                ([n, _]) => app.vnodes.push(_vv(n));
+                ([n, _]) => app.vnodes.push(fst._(n));
 
             vnodes.forEach(__.do(connect, plant, push));
             return app;
@@ -40,8 +40,8 @@ function _vv (name, svg) {
     app.connect = 
         (arrow, b, xs) => {
             let sig = 
-                _vv.sig(..._vv.arrow(`${app._name} ${arrow} ${b}`));
-            _vv.connect(sig, xs);
+                fst._sig(...fst._arrow(`${app._name} ${arrow} ${b}`));
+            fst._connect(sig, xs);
             return app;
         }
     
@@ -62,53 +62,53 @@ function _vv (name, svg) {
     return app;
 }
 
-_vv.nodes = {};
+fst._nodes = {};
 
-_vv.new = 
-    n => vv(/#/.test(n) ? n : '#' + n)
+fst._new = 
+    n => fst(/#/.test(n) ? n : '#' + n)
         .up('=> ' + n)
         .up('-> ' + n, false)
         .kill('!> ' + n);
 
-_vv.get = 
-    id => _vv.nodes[id];
+fst._get = 
+    id => fst._nodes[id];
 
-_vv.set = 
+fst._set = 
     (id, vnode) => {
-        _vv.nodes[id] = vnode;
+        fst._nodes[id] = vnode;
         return vnode;
     }
 
-_vv.sig = 
+fst._sig = 
     (a, b, r) => `${a._name} ${r ? '=' : '-'}> ${b._name}`;
 
-_vv.connect = 
+fst._connect = 
     (sig, xs) => {
 
-            let [a, b, r] = _vv.arrow(sig);
+            let [a, b, r] = fst._arrow(sig);
             a
-                .signal(xs, sig);
+                .signal(fst._keys(xs), sig);
             b
                 .update(sig, d=>d, r);
-            return _vv;
+            return fst._
         };
 
-_vv.link = 
+fst._link = 
     __.forKeys(
-        (sig, xs) => _vv.connect(sig, vv._(xs))
+        (sig, xs) => fst._connect(sig, fst._keys(xs))
     )
 
-vv._ = 
+fst._keys = 
     xs => typeof xs === 'string'
         ? xs.split(/,?\s/)
         : xs;
 
-_vv.arrow = 
+fst._arrow = 
     (sig) => {
 
         let re = /(\w*)\s(<?[-=]>?)\s(\w*)/;
         let [s, a, link, b] = sig.match(re);
         return link[1] === '>'
-            ? [_vv(a), _vv(b), link[0] === '=']
-            : [_vv(b), _vv(a), link[1] === '='];
+            ? [fst._(a), fst._(b), link[0] === '=']
+            : [fst._(b), fst._(a), link[1] === '='];
     };

@@ -8,39 +8,52 @@ gifs.initModel = {
     topic: 'cat'
 };
 
-
 /*** get more gif ***/
 
 gifs.moreGif =
-    topic => vv.ajax()
+    topic => fst.ajax()
         .get(gifs.url + topic)
         .then(JSON.parse)
         .then(response => response.data.image_url)
-        .then(src => vv.emit('gif.new', {gifSrc: src})());
+        .then(src => fst.emit('gif.new', {gifSrc: src})());
 
 gifs.buttonMore =
-    vv('button', ['more Gif!'])
+    fst('button', ['more Gif!'])
         .on('click', (t,M) => gifs.moreGif(M.topic));
 
 gifs.img =
-    vv('img')
+    fst('img')
         .attr({src: M => M.gifSrc})
         .up('gif.new')
+
+/******************************/
+
+fst._('X')
+    .html(M => M.msg)
+    .on('click', fst.emit('=> a', {msg: 'c'}))
+
+fst._('Y')
+    .pull('a', M => Ma)
+    .pull('b', M => Mb) 
+
+fst.__('A')
+    .parse(R => M)
+    .use('X', 'Y')
 
 
 /*** topic choice ***/
 
 gifs.inputTopic =
-    vv('input')
+    fst('input')
         .value(M => M.topic)
-        .on('change', vv.emit('gif.type', t => t.value))
+        .on('change', fst.emit('gif.type', t => t.value))
         .up('gif.type', (d,M) => ({topic : d}), false);
 
 
 /*** main view ***/
 
 gifs.view = 
-    vv('#gif')
+    fst('#gif')
         .branch([
             ['div', [ 
                 gifs.img 
@@ -59,11 +72,11 @@ gifs.view =
 /*** gif loop opt-in ***/
 
 gifs.buttonInit = 
-    vv('button', ['...sure?'])
-        .on('click', vv.emit('gif.init'))
+    fst('button', ['...sure?'])
+        .on('click', fst.emit('gif.init'))
         .kill('gif.init');
 
-vv('.example')
+fst('.example')
     .branch([
         ['h2', ['ajax example']],
         gifs.buttonInit,

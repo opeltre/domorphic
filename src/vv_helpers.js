@@ -1,29 +1,29 @@
-/*** vv_helpers ***/
+/*** fst_helpers ***/
 
-vv.input = 
+fst.input = 
     (id, key=id, css='') => {
         let data = 
             val => { let d = {}; d[key] = val; return d };
-        return vv('input#' + id + css)
+        return fst('input#' + id + css)
             .html(M => M[key])
             .on('input', 
-                vv.emit('-> '+ id, t => data(t.value))
+                fst.emit('-> '+ id, t => data(t.value))
             )
     }
 
-vv.textarea = 
+fst.textarea = 
     (id, key=id, css='') => {
         let data = 
             val => { let d = {}; d[key] = val; return d };
-        return vv('textarea#'+ id + css)
+        return fst('textarea#'+ id + css)
             .value(M => M[key])
             .on('change', 
-                vv.emit('-> ' + id, t => data(t.value)))
+                fst.emit('-> ' + id, t => data(t.value)))
     }
 
-vv.table = 
+fst.table = 
     body => 
-        vv('table', [
+        fst('table', [
             ['tbody', 
                 body
                     .map(row => row
