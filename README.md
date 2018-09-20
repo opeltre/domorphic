@@ -35,12 +35,12 @@ let node =
 
 //  fragment :: Html
 let fragment = 
-    tree({msg: 'allo allo', false'});
+    tree({msg: 'allo allo', false});
 ```
 
 ### Eventful forest
 
-Trees listen to the forest's events `fst.emit` instances dispatch 
+Trees listen to the forest's events dispatched via `fst.emit`
 to refresh themselves, their html foliage ondulating
 in the DOM wind in the meantime.
 

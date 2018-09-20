@@ -1,135 +1,8 @@
-/* vv_bundle */
-/*** __ ***/
-
-let __ = {};
-
-
-__.null = 
-    () => {};
-
-__.id =
-    x => x;
-
-__.return = 
-    x => y => x;
-
-__.X = 
-    f => 
-        X => f(...X);
-
-__.$ = 
-    (...xs) => 
-        f => f(...xs);
-
-__.if = 
-    (f,g,h) => 
-        (...xs) => f(...xs) ? g(...xs) : h(...xs);
-
-__.pipe = 
-    (f=__.id, ...fs) => fs.length
-        ? (...xs) =>  __.pipe(...fs)(f(...xs))
-        : (...xs) => f(...xs);
-
-__.do = 
-    (f=__.id, ...fs) => fs.length
-        ? __.pipe(__.do(f), __.do(...fs))
-        : x => {f(x); return x} 
-
-__.not = 
-    b => !b;
-
-__.log = 
-    x => {console.log(x); return x};
-
-__.logs = 
-    str => 
-        x => {__.log(str || 'logs:'); return  __.log(x)};
-
-__.forKeys = 
-    (...fs) => 
-        obj => Object.keys(obj).forEach(
-            k => __.pipe(...fs)(k, obj[k])
-        );
-
-__.mapKeys = 
-    (...fs) => 
-        obj => {
-            let obj2 = {};
-            Object.keys(obj).forEach(
-                k => obj2[k] = __.pipe(...fs)(obj[k], k)
-            )
-            return obj2;
-        };
-
-__.subKeys = 
-    (...ks) => 
-        obj => {
-            let sub = {};
-            ks.filter(k => (obj[k] !== undefined))
-                .forEach(k => sub[k] = obj[k]);
-            return sub;
-        };
-
-__.emptyKeys =
-    obj => {
-        let out = true;
-        __.forKeys(k => out = false)(obj);
-        return out;
-    };
-
-__.toKeys = 
-    pairs => {
-        let out = {};
-        pairs.forEach(
-            ([v, k]) => out[k] = v
-        )
-        return out;
-    };
-
-__.toPairs = 
-    obj => {
-        let out = [];
-        __.forKeys(
-            (v,k) => out.push([v,k])
-        );
-        return out;
-    };
-
-/* misc */
-
-__.getset = getset;
-
-__.sleep = 
-    ms => new Promise(then => setTimeout(then, ms));
-
-__.range =
-    n => {
-        let out = [];
-        for (var i=0; i<n; i++) {
-            out.push(i);
-        }
-        return out;
-    }
-
-/* getset */
-
-function getset (obj, attrs) {
-    let method = 
-        key => function (x) {
-            if (!arguments.length)
-                return attrs[key];
-            attrs[key] = x;
-            return obj;
-        };
-    forEachKey(attrs)(
-        key => obj[key] = method(key)
-    );
-    return obj;
-}
 /* 
  * L'ARBRE DOM VIRTUEL
  */
-function vv (tag, attr, branch) {
+
+function fst (tag, attr, branch) {
 
     var {tag, attr, branch} = parse(tag, attr, branch);
     
@@ -139,7 +12,7 @@ function vv (tag, attr, branch) {
         node :      null,
         parentNode : null,
         model :     {},
-        doc :       vv.document,
+        doc :       fst.document,
         html :      '',
         value :     '',
         plant :     null,
@@ -190,7 +63,7 @@ function vv (tag, attr, branch) {
                 e.detail
             );
             my.doc().addEventListener(
-                'vv#' + when,
+                'fst#' + when,
                  e => my(M(e), append)
             );
         }
@@ -202,7 +75,7 @@ function vv (tag, attr, branch) {
             my.node().remove();
         else {
             my.doc().addEventListener(
-                'vv#' + when,
+                'fst#' + when,
                 () => my.node().remove()
             );
         }
@@ -224,7 +97,7 @@ function vv (tag, attr, branch) {
     my.hook = 
         (xs, ...hooks) => {
             let hook = data => {
-                let d = __.subKeys(...vv._(xs))(data || {});
+                let d = __.subKeys(...fst._(xs))(data || {});
                 if (!__.emptyKeys(d))
                     __.do(...hooks)(d, my.model());
             }
@@ -233,7 +106,7 @@ function vv (tag, attr, branch) {
         };
 
     my.signal = 
-        (xs, sig) => my.hook(xs, vv.emit(sig, d => d));
+        (xs, sig) => my.hook(xs, fst.emit(sig, d => d));
 
     my.update = (evt, update=__.id, ...then) => {
         if (typeof update === 'boolean') {
@@ -254,7 +127,7 @@ function vv (tag, attr, branch) {
             return my.model();
         };
         let listener = __.pipe(doUpdate, ...then);
-        my.doc().addEventListener('vv#'+evt, listener);
+        my.doc().addEventListener('fst#'+evt, listener);
         return my;
     }
     my.up = my.update;
@@ -355,11 +228,11 @@ function vv (tag, attr, branch) {
     function parseBranch (b) {
         let t = x => (typeof x);
         if (t(b) === 'string' || isModelFunction(b))
-            return vv('text').html(b)
+            return fst('text').html(b)
         if (Array.isArray(b)) 
             return (t(b[0]) === 'function')
                 ? b 
-                : vv(...b);
+                : fst(...b);
         return b
     }
 
@@ -368,7 +241,7 @@ function vv (tag, attr, branch) {
         if (Array.isArray(attr))
             [attr, branch] = [{}, attr];
         /** match "tagname#id.class.class2" **/
-        let {classes, tagname, id} = vv.parse(tag);
+        let {classes, tagname, id} = fst.parse(tag);
         if (id) 
             Object.assign(attr, {id});
         if (classes.length)
@@ -380,15 +253,16 @@ function vv (tag, attr, branch) {
     }
 
     function isModelFunction (x) {
-        return (typeof x === 'function' && !x._vv);
+        return (typeof x === 'function' && !x._fst);
     }
 
-    my._vv = true;
+    my._fst = true;
     return getset(my,self);
 }
+fst.Node = (...xs) => fst(...xs); 
 
 /*** parse ***/
-vv.parse = function (tag) {
+fst.parse = function (tag) {
     /** match "tagname#id.class.class2" **/
     let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)/g,
         matches = tag.match(re);
@@ -408,14 +282,14 @@ vv.parse = function (tag) {
 
 /*** emit ***/
 
-vv.on = function (name, ...then) {
-    vv.document.addEventListener(
-        'vv#' + name,
+fst.on = function (name, ...then) {
+    fst.document.addEventListener(
+        'fst#' + name,
         __.do(...then)
     );
 }
 
-vv.emit = function (name, data={}, ...more) {
+fst.emit = function (name, data={}, ...more) {
     
     if (!name) 
         return __.null;
@@ -425,8 +299,8 @@ vv.emit = function (name, data={}, ...more) {
             ? data(evt.target || evt)
             : data;
     let emit = 
-        evt => vv.document.dispatchEvent(new CustomEvent(
-            'vv#' + name,
+        evt => fst.document.dispatchEvent(new CustomEvent(
+            'fst#' + name,
             {
                 bubbles: true,
                 detail: getData(evt)
@@ -439,21 +313,21 @@ vv.emit = function (name, data={}, ...more) {
         };
     let handler = 
         __.if(
-            () => vv.debug,
+            () => fst.debug,
             __.do(emit, debug),
             emit
         );
-    return __.do(handler, vv.emit(...more));
+    return __.do(handler, fst.emit(...more));
 
 }
 
-vv.document = (typeof document === 'undefined') 
+fst.document = (typeof document === 'undefined') 
     ? {dispatchEvent: __.null, addEventListener: __.null}
     : document;
 
-vv.document.addEventListener(
+fst.document.addEventListener(
     'DOMContentLoaded', 
-    vv.emit('dom')
+    fst.emit('dom')
 );
 
 /****** GETSET ******/
@@ -464,180 +338,3 @@ vv.document.addEventListener(
 function forEachKey (obj) {
     return f => Object.keys(obj).forEach(f);
 }
-function _vv (name, svg) {
-
-    let id = 
-        name => /#/.test(name) ? vv.parse(name).id : name;
-
-    let app 
-        = _vv.get(id(name)) 
-        || _vv.set(id(name), _vv.new(name));
-
-    app._name = name;
-   
-    app.vnodes = app.vnodes || [];
-
-    app.mount = 
-        (dest, ...vnodes) => {
-
-            if (typeof dest !== 'string') {
-                vnodes = [dest].concat(vnodes); dest = null;
-            }
-
-            let connect = 
-                ([n, attrs]) => __.forKeys(
-                    (arrow, values) => app.connect(arrow, n, values)
-                )(attrs || {});
-
-            let plant = 
-                ([n, attrs]) => _vv(n).plant(dest || app._name + '__' + n);
-
-            let push = 
-                ([n, _]) => app.vnodes.push(_vv(n));
-
-            vnodes.forEach(__.do(connect, plant, push));
-            return app;
-        }
-
-    app.gmount = 
-        (dest, ...vnodes) => app
-            .mount(dest, ...vnodes.map(([n, _]) => ['g#' + n, _]));
-
-    app.connect = 
-        (arrow, b, xs) => {
-            let sig = 
-                _vv.sig(..._vv.arrow(`${app._name} ${arrow} ${b}`));
-            _vv.connect(sig, xs);
-            return app;
-        }
-    
-    app.stepwise = 
-        j => {
-            let starts = (a,b) => b.start('=> ' + a._name),
-                kills = (a,b) => b.kill('=> ' + a._name),
-                get = (i) => app.vnodes[i];
-            app.vnodes.forEach(
-                (a,i) => { 
-                    if (get(i+j)) starts(a, get(i+j));
-                    if (get(i-1)) kills(a, get(i-1));
-                }
-            );
-            return app;
-        };
-
-    return app;
-}
-
-_vv.nodes = {};
-
-_vv.new = 
-    n => vv(/#/.test(n) ? n : '#' + n)
-        .up('=> ' + n)
-        .up('-> ' + n, false)
-        .kill('!> ' + n);
-
-_vv.get = 
-    id => _vv.nodes[id];
-
-_vv.set = 
-    (id, vnode) => {
-        _vv.nodes[id] = vnode;
-        return vnode;
-    }
-
-_vv.sig = 
-    (a, b, r) => `${a._name} ${r ? '=' : '-'}> ${b._name}`;
-
-_vv.connect = 
-    (sig, xs) => {
-
-            let [a, b, r] = _vv.arrow(sig);
-            a
-                .signal(xs, sig);
-            b
-                .update(sig, d=>d, r);
-            return _vv;
-        };
-
-_vv.link = 
-    __.forKeys(
-        (sig, xs) => _vv.connect(sig, vv._(xs))
-    )
-
-vv._ = 
-    xs => typeof xs === 'string'
-        ? xs.split(/,?\s/)
-        : xs;
-
-_vv.arrow = 
-    (sig) => {
-
-        let re = /(\w*)\s(<?[-=]>?)\s(\w*)/;
-        let [s, a, link, b] = sig.match(re);
-        return link[1] === '>'
-            ? [_vv(a), _vv(b), link[0] === '=']
-            : [_vv(b), _vv(a), link[1] === '='];
-    };
-/*** vv_helpers ***/
-
-vv.input = 
-    (id, key=id, css='') => {
-        let data = 
-            val => { let d = {}; d[key] = val; return d };
-        return vv('input#' + id + css)
-            .html(M => M[key])
-            .on('input', 
-                vv.emit('-> '+ id, t => data(t.value))
-            )
-    }
-
-vv.textarea = 
-    (id, key=id, css='') => {
-        let data = 
-            val => { let d = {}; d[key] = val; return d };
-        return vv('textarea#'+ id + css)
-            .value(M => M[key])
-            .on('change', 
-                vv.emit('-> ' + id, t => data(t.value)))
-    }
-
-vv.table = 
-    body => 
-        vv('table', [
-            ['tbody', 
-                body
-                    .map(row => row
-                        .map(cell => ['td', [cell]])
-                    )
-                    .map(row => ['tr', row])
-            ]
-        ]);
-/*** ajax ***/
-
-vv.ajax = function (data) {
-
-    let my = {},
-        xhr = new XMLHttpRequest();
-    data = data ? JSON.stringify(data) : null;
-
-    ['get', 'post', 'put', 'move', 'delete']
-        .forEach(m => my[m] = method(m));
-
-    function method (m) {
-        return url => {
-            xhr.open(m.toUpperCase(), url);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            return new Promise(resolve => then(resolve));
-        }
-    }
-
-    function then (f) {
-        let ok = () => (xhr.readyState === 4 && xhr.status === 200);
-        xhr.onreadystatechange = () => ok() && f(xhr.responseText);
-        xhr.send(data);
-    }
-   
-    my.del = my.delete;
-    return my;
-}
-if (typeof window === 'undefined') {    module.exports = {vv, _vv, __};    }

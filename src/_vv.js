@@ -1,11 +1,11 @@
-function fst._(name, svg) {
+function _F.node(name, svg) {
 
     let id = 
-        name => /#/.test(name) ? fst.parse(name).id : name;
+        name => /#/.test(name) ? _F.parse(name).id : name;
 
     let app 
-        = fst._get(id(name)) 
-        || fst._set(id(name), fst._new(name));
+        = _F.node.get(id(name)) 
+        || _F.node.set(id(name), _F.node.new(name));
 
     app._name = name;
    
@@ -24,10 +24,10 @@ function fst._(name, svg) {
                 )(attrs || {});
 
             let plant = 
-                ([n, attrs]) => fst._(n).plant(dest || app._name + '__' + n);
+                ([n, attrs]) => _F.node.(n).plant(dest || app._name + '__' + n);
 
             let push = 
-                ([n, _]) => app.vnodes.push(fst._(n));
+                ([n, _]) => app.vnodes.push(_F.node.(n));
 
             vnodes.forEach(__.do(connect, plant, push));
             return app;
@@ -40,8 +40,8 @@ function fst._(name, svg) {
     app.connect = 
         (arrow, b, xs) => {
             let sig = 
-                fst._sig(...fst._arrow(`${app._name} ${arrow} ${b}`));
-            fst._connect(sig, xs);
+                _F.node.sig(..._F.node.arrow(`${app._name} ${arrow} ${b}`));
+            _F.node.connect(sig, xs);
             return app;
         }
     
@@ -62,53 +62,53 @@ function fst._(name, svg) {
     return app;
 }
 
-fst._nodes = {};
+_F.node.nodes = {};
 
-fst._new = 
-    n => fst(/#/.test(n) ? n : '#' + n)
+_F.node.new = 
+    n => _F(/#/.test(n) ? n : '#' + n)
         .up('=> ' + n)
         .up('-> ' + n, false)
         .kill('!> ' + n);
 
-fst._get = 
-    id => fst._nodes[id];
+_F.node.get = 
+    id => _F.node.nodes[id];
 
-fst._set = 
+_F.node.set = 
     (id, vnode) => {
-        fst._nodes[id] = vnode;
+        _F.node.nodes[id] = vnode;
         return vnode;
     }
 
-fst._sig = 
+_F.node.sig = 
     (a, b, r) => `${a._name} ${r ? '=' : '-'}> ${b._name}`;
 
-fst._connect = 
+_F.node.connect = 
     (sig, xs) => {
 
-            let [a, b, r] = fst._arrow(sig);
+            let [a, b, r] = _F.node.arrow(sig);
             a
-                .signal(fst._keys(xs), sig);
+                .signal(_F.node.keys(xs), sig);
             b
                 .update(sig, d=>d, r);
-            return fst._
+            return _F.node.
         };
 
-fst._link = 
+_F.node.link = 
     __.forKeys(
-        (sig, xs) => fst._connect(sig, fst._keys(xs))
+        (sig, xs) => _F.node.connect(sig, _F.node.keys(xs))
     )
 
-fst._keys = 
+_F.node.keys = 
     xs => typeof xs === 'string'
         ? xs.split(/,?\s/)
         : xs;
 
-fst._arrow = 
+_F.node.arrow = 
     (sig) => {
 
         let re = /(\w*)\s(<?[-=]>?)\s(\w*)/;
         let [s, a, link, b] = sig.match(re);
         return link[1] === '>'
-            ? [fst._(a), fst._(b), link[0] === '=']
-            : [fst._(b), fst._(a), link[1] === '='];
+            ? [_F.node.(a), _F.node.(b), link[0] === '=']
+            : [_F.node.(b), _F.node.(a), link[1] === '='];
     };

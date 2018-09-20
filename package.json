@@ -1,0 +1,33 @@
+{
+  "name": "@opeltre/forest",
+  "version": "0.0.0",
+  "description": "a functional and eventful template and framework",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo '_F _F _F'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opeltre/virtual-view.git"
+  },
+  "keywords": [
+    "functional",
+    "fp",
+    "template",
+    "framework",
+    "dom",
+    "middleware"
+  ],
+  "author": "Olivier Peltre",
+  "license": "GPL-2.0",
+  "bugs": {
+    "url": "https://github.com/opeltre/virtual-view/issues"
+  },
+  "homepage": "https://github.com/opeltre/virtual-view#readme",
+  "dependencies": {
+    "jsdom": "^12.0.0"
+  }
+}

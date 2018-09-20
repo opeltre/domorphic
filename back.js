@@ -1,19 +1,9 @@
 const fs = require('fs'),
     { JSDOM } = require('jsdom'),
-    {vv, _vv, __} = require('./vv_bundle');
+    fst = require('./bundle'),
+    __ = fst.__; 
 
-/*
-    vv_('a')
-        .html('index.html')
-        .use(_vv('b'));
-        .model({msg: 'Hello World!'});
-
-    _vv('b', [M => M.msg]);
-
-    app.get('/a', vv_('a'));
-*/
-
-function handler () {
+fst.Doc = function () {
 
     let self = {
         html : null,
@@ -114,7 +104,7 @@ function linkStyle (doc, href) {
     doc.head.appendChild(sheet);
 }
 
-/*** vv_ ***/
+/*** vv_ ***
 
 function vv_ (name) {
     let my = vv_.get(name)
@@ -128,8 +118,9 @@ vv_.get =
 
 vv_.new = 
     name => {
-        vv_.nodes[name] = handler();
+        vv_.nodes[name] = fst.Forest();
         return vv_.nodes[name];
     };
+*/
 
-module.exports = {vv_, vv, _vv, __};
+module.exports = fst;
