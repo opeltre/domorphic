@@ -1,4 +1,4 @@
-const fs = require('fs'),
+const fs = require('fs').promises,
     path = require('path'),
     { JSDOM } = require('jsdom'),
     fst = require('./bundle'),
