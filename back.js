@@ -1,12 +1,13 @@
 const fs = require('fs'),
+    path = require('path'),
     { JSDOM } = require('jsdom'),
     fst = require('./bundle'),
     __ = fst.__; 
 
-fst.Doc = function () {
+fst.Doc = function (src) {
 
     let self = {
-        html : null,
+        html : src,
         nodes : [],
         model: [],
         parse: __.id,
@@ -30,7 +31,7 @@ fst.Doc = function () {
 
     my.getHtml = 
         () => self.html 
-            ? fs.readFile(self.html) 
+            ? fs.readFile(htmlPath(self.html)) 
             : Promise.resolve('');
 
     my.getDom =
@@ -77,6 +78,10 @@ fst.Doc = function () {
 }
 
 /* ... */
+
+function htmlPath (p) {
+    return path.join(require.main.filename, '..', p + '.html')
+}
 
 let ifRelative = (f) => 
     name => ( name[0] === '/' || /^https?:\/\//.test(name) )
