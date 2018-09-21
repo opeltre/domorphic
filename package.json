@@ -1,6 +1,6 @@
 {
   "name": "@opeltre/forest",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a functional and eventful template and framework",
   "main": "back.js",
   "directories": {
