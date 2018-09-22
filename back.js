@@ -98,14 +98,14 @@ let paths = defaultPaths;
 function linkScript (doc, src) {
     let node = doc.head,
         script = doc.createElement('script');
-    script.src = paths.script(s);
+    script.src = paths.script(src);
     node.appendChild(script);
 }
 
 function linkStyle (doc, href) {
     let sheet = doc.createElement('link');
     sheet.rel = "stylesheet";
-    sheet.href = paths.style(s);
+    sheet.href = paths.style(href);
     doc.head.appendChild(sheet);
 }
 
