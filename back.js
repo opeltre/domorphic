@@ -4,7 +4,7 @@ const fs = require('fs').promises,
     fst = require('./bundle'),
     __ = fst.__; 
 
-fst.Doc = function (src) {
+fst.Doc = (src) => {
 
     let self = {
         html : src,
@@ -62,8 +62,8 @@ fst.Doc = function (src) {
     my.link = 
         dom => {
             let doc = dom.window.document;
-            self.scripts.forEach(s => linkScript(d,s))
-            self.style.forEach(s => linkStyle(d,s));
+            self.scripts.forEach(s => linkScript(doc, s))
+            self.style.forEach(s => linkStyle(doc, s));
         }
 
     my.send = 
@@ -109,23 +109,22 @@ function linkStyle (doc, href) {
     doc.head.appendChild(sheet);
 }
 
-/*** vv_ ***
 
-function vv_ (name) {
-    let my = vv_.get(name)
+let docs = {};
+
+fst.doc = (name) => {
+
+    let my = get(name)
+
+    let get =  name => 
+        docs[name] || create(name);
+
+    let create = name => {
+        docs[name] = fst.Doc();
+        return docs[name];
+    };
+    
     return my;
 }
-
-vv_.nodes = {};
-
-vv_.get = 
-    name => vv_.nodes[name] || vv_.new(name);
-
-vv_.new = 
-    name => {
-        vv_.nodes[name] = fst.Forest();
-        return vv_.nodes[name];
-    };
-*/
 
 module.exports = fst;
