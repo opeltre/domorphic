@@ -1,20 +1,21 @@
 [forest.js](http://mathchat.fr:8083/vv)
-is a plain javascript program to design virtual views ---
-a DOM templating philosophy based on js functions and events for dynamism.
+is a plain javascript program and 
+a DOM templating philosophy.
 
-## The forest
-
-```     
-         .-<-. 
-    D -->|   M --> Html D
-         `->-'
-```
+> js functions spin the web  
 
 ### Functional trees
 
 A forest consists of trees. 
 A tree constructed by `fst` is a function 
 taking in a model object to return a html document fragment.
+
+```javascript
+fst('div#gif', [
+    ['h1', ['cat gifs']],
+    ['img', {src: M => M.url }]
+]);
+```
 
 ```javascript
 //  tree :: Model -> html( Data ) 
