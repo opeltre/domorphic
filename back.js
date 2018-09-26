@@ -4,7 +4,7 @@ const fs = require('fs').promises,
     fst = require('./bundle'),
     __ = fst.__; 
 
-fst.Doc = (src) => {
+fst.doc = (src) => {
 
     let self = {
         html : src,
@@ -112,7 +112,7 @@ function linkStyle (doc, href) {
 
 let docs = {};
 
-fst.doc = (name) => {
+fst.$$ = (name) => {
 
     let my = get(name)
 
@@ -120,7 +120,7 @@ fst.doc = (name) => {
         docs[name] || create(name);
 
     let create = name => {
-        docs[name] = fst.Doc();
+        docs[name] = fst.doc();
         return docs[name];
     };
     
