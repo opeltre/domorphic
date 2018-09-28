@@ -11,8 +11,10 @@ fst.doc = (src) => {
         nodes : [],
         model: [],
         parse: __.id,
-        scripts: [],
-        style: [],
+    };
+    let selfA = {
+        script: [],
+        style: []
     };
 
     function my (req, res) {
@@ -62,8 +64,8 @@ fst.doc = (src) => {
     my.link = 
         dom => {
             let doc = dom.window.document;
-            self.scripts.forEach(s => linkScript(doc, s))
-            self.style.forEach(s => linkStyle(doc, s));
+            my.script().forEach(s => linkScript(doc, s))
+            my.style().forEach(s => linkStyle(doc, s));
         }
 
     my.send = 
@@ -73,7 +75,7 @@ fst.doc = (src) => {
     my.use = 
         (...ns) => my.nodes(my.nodes().concat(ns));
 
-    return __.getset(my, self);
+    return __.getset(my, self, selfA);
     
 }
 
@@ -114,16 +116,16 @@ let docs = {};
 
 fst.$$ = (name) => {
 
-    let my = get(name)
-
-    let get =  name => 
-        docs[name] || create(name);
-
     let create = name => {
         docs[name] = fst.doc();
         return docs[name];
     };
     
+    let get =  name => 
+        docs[name] || create(name);
+
+    let my = get(name)
+
     return my;
 }
 

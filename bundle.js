@@ -166,8 +166,12 @@ function fst (tag, attr, branch) {
         properties: {},
         svg:        tag === 'svg' || tag === 'g'
     };
+    
+    let selfA = {
+        branches : branch || []
+    }
+
     let attributes = attr, 
-        branches = branch || [],
         events = {};
 
     function my (model, append = true) {
@@ -181,7 +185,7 @@ function fst (tag, attr, branch) {
             .nodeConf($m)
             .nodeAppend(append);
         /** branch **/
-        $m(branches).map($m)
+        $m(my.branch()).map($m)
             .map(b => b.link(my))
             .forEach(b => b(model));
         /** plant **/
@@ -190,11 +194,12 @@ function fst (tag, attr, branch) {
             : my.parentNode();
     }
 
-    my.branch = 
-       bs => {
-           branches = bs.map(parseBranch);
-           return my;
-       };
+    my.branch =
+        (...bs) => bs.length 
+            ? my.branches(
+                my.branches(...bs).branches().map(parseBranch)
+            )
+            : my.branches();
 
     my.modelUpdate =
         (...Ms) => my.model(Object.assign(my.model(), ...Ms)); 
@@ -408,7 +413,7 @@ function fst (tag, attr, branch) {
     }
 
     my._fst = true;
-    return getset(my,self);
+    return __.getset(my, self, selfA);
 }
 fst.Node = (...xs) => fst(...xs); 
 
