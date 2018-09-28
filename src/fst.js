@@ -174,15 +174,18 @@ function fst (tag, attr, branch) {
     }
 
     my.nodeConf = ($m) => {
-        forEachKey(attributes)(
+
+        let forKeys = o => f => __.forKeys(f)(o),
+            model = $m(x => x),
+            $mListener = l => (t => l(t, model));
+
+        forKeys(attributes)(
             key => my.nodeSet(key, $m(my.attr(key)))
         );
-        forEachKey(self.properties)(
+        forKeys(self.properties)(
             key => my.node()[key] = $m(self.properties[key])
         );
-        let model = $m(x => x),
-            $mListener = l => (t => l(t, model));
-        forEachKey(events)(
+        forKeys(events)(
             key => my.on(key).forEach(
                 list => my.node()
                     .addEventListener(key, ...list.map($mListener))
@@ -190,6 +193,7 @@ function fst (tag, attr, branch) {
         );
         my.node().innerHTML = $m(my.html());
         my.node().value = $m(my.value());
+
         return my;
     }
 
@@ -329,12 +333,3 @@ fst.document.addEventListener(
     'DOMContentLoaded', 
     fst.emit('dom')
 );
-
-/****** GETSET ******/
-/* still wanted in global scope, e.g. for bmp2svg.
- * forEachKey, $, logthen... as well?
- */
-
-function forEachKey (obj) {
-    return f => Object.keys(obj).forEach(f);
-}

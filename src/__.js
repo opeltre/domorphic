@@ -120,8 +120,8 @@ function getset (obj, attrs) {
             attrs[key] = x;
             return obj;
         };
-    forEachKey(attrs)(
+    __.forKeys(
         key => obj[key] = method(key)
-    );
+    )(attrs);
     return obj;
 }
