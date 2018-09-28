@@ -4,11 +4,11 @@ deps=('__' 'fst' 'elements' 'ajax' 'export')
 bundle='bundle.js'
 #dir='/home/shevket/js/vv/'
 
-echo '/* forest bundle */' > $vv/$bundle && echo "bundling..."
+echo '/* forest bundle */' > $(pwd)/$bundle && echo "bundling..."
 
 for d in ${deps[*]}
 do  
-    cat $vv/src/$d.js >> $vv/$bundle && echo "->  $d.js"
+    cat $(pwd)/src/$d.js >> $(pwd)/$bundle && echo "->  $d.js"
 done
 
 echo "...done"

@@ -96,7 +96,8 @@ __.toPairs =
 
 /* misc */
 
-__.getset = getset;
+__.getset = 
+    (my, a, as) => getset(getsetArray(my, as), a);
 
 __.sleep = 
     ms => new Promise(then => setTimeout(then, ms));
@@ -112,16 +113,34 @@ __.range =
 
 /* getset */
 
-function getset (obj, attrs) {
+function getset (my, attrs={}) {
     let method = 
         key => function (x) {
             if (!arguments.length)
                 return attrs[key];
             attrs[key] = x;
-            return obj;
+            return my;
         };
     __.forKeys(
-        key => obj[key] = method(key)
+        key => my[key] = method(key)
     )(attrs);
-    return obj;
+    return my;
 }
+
+function getsetArray (my, attrs={}) {
+    let method =
+        key => function (x, ...xs) {
+            if (typeof x === 'undefined')
+                return attrs[key];
+            if (Array.isArray(x))
+                attrs[key] = x;
+            else 
+                attrs[key] = [...attrs[key], x, ...xs];
+            return my;
+        };
+    __.forKeys(
+        key => my[key] = method(key)
+    )(attrs);
+    return my;
+}
+

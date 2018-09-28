@@ -97,7 +97,8 @@ __.toPairs =
 
 /* misc */
 
-__.getset = getset;
+__.getset = 
+    (my, a, as) => getset(getsetArray(my, as), a);
 
 __.sleep = 
     ms => new Promise(then => setTimeout(then, ms));
@@ -113,19 +114,37 @@ __.range =
 
 /* getset */
 
-function getset (obj, attrs) {
+function getset (my, attrs={}) {
     let method = 
         key => function (x) {
             if (!arguments.length)
                 return attrs[key];
             attrs[key] = x;
-            return obj;
+            return my;
         };
-    forEachKey(attrs)(
-        key => obj[key] = method(key)
-    );
-    return obj;
+    __.forKeys(
+        key => my[key] = method(key)
+    )(attrs);
+    return my;
 }
+
+function getsetArray (my, attrs={}) {
+    let method =
+        key => function (x, ...xs) {
+            if (typeof x === 'undefined')
+                return attrs[key];
+            if (Array.isArray(x))
+                attrs[key] = x;
+            else 
+                attrs[key] = [...attrs[key], x, ...xs];
+            return my;
+        };
+    __.forKeys(
+        key => my[key] = method(key)
+    )(attrs);
+    return my;
+}
+
 /* 
  * L'ARBRE DOM VIRTUEL
  */
@@ -302,15 +321,18 @@ function fst (tag, attr, branch) {
     }
 
     my.nodeConf = ($m) => {
-        forEachKey(attributes)(
+
+        let forKeys = o => f => __.forKeys(f)(o),
+            model = $m(x => x),
+            $mListener = l => (t => l(t, model));
+
+        forKeys(attributes)(
             key => my.nodeSet(key, $m(my.attr(key)))
         );
-        forEachKey(self.properties)(
+        forKeys(self.properties)(
             key => my.node()[key] = $m(self.properties[key])
         );
-        let model = $m(x => x),
-            $mListener = l => (t => l(t, model));
-        forEachKey(events)(
+        forKeys(events)(
             key => my.on(key).forEach(
                 list => my.node()
                     .addEventListener(key, ...list.map($mListener))
@@ -318,6 +340,7 @@ function fst (tag, attr, branch) {
         );
         my.node().innerHTML = $m(my.html());
         my.node().value = $m(my.value());
+
         return my;
     }
 
@@ -457,15 +480,6 @@ fst.document.addEventListener(
     'DOMContentLoaded', 
     fst.emit('dom')
 );
-
-/****** GETSET ******/
-/* still wanted in global scope, e.g. for bmp2svg.
- * forEachKey, $, logthen... as well?
- */
-
-function forEachKey (obj) {
-    return f => Object.keys(obj).forEach(f);
-}
 /*** fst_helpers ***/
 
 fst.input = 
