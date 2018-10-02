@@ -1,4 +1,4 @@
-[forest.js](http://mathchat.fr:8083/vv)
+[forest](http://mathchat.fr:8083/vv)
 is a plain javascript program and 
 a DOM templating philosophy.
 
