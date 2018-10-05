@@ -81,7 +81,7 @@ fst.doc = (src) => {
 
 /* ... */
 function htmlPath (p) {
-    return path.join((require.filename || __filename), '..', p + '.html')
+    return path.join((module.parent.filename || __filename), '..', p + '.html')
 }
 
 let ifRelative = (f) => 
