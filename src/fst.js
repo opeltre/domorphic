@@ -38,7 +38,8 @@ function fst (tag, attr, branch) {
             .nodeConf($m)
             .nodeAppend(append);
         /** branch **/
-        $m(my.branch()).map($m)
+        __.log($m(my.branch())).map($m)
+            .map(parseBranch)
             .map(b => b.link(my))
             .forEach(b => b(model));
         /** plant **/
@@ -47,12 +48,21 @@ function fst (tag, attr, branch) {
             : my.parentNode();
     }
 
+    my.branch = (b) => {
+        if (typeof b === 'undefined')
+            return selfA.branches
+        selfA.branches = b;
+        return my;
+    }
+    
+    /*
     my.branch =
-        (...bs) => bs.length 
-            ? my.branches(
-                my.branches(...bs).branches().map(parseBranch)
-            )
-            : my.branches();
+        (b,...bs) => (typeof b === 'undefined')
+            ? my.branches()
+            : (Array.isArray(b) && !(typeof b[0] === 'string')) 
+                    ? my.branches(b.map(parseBranch))
+                    : my.branches(...[b, ...bs].map(parseBranch));
+  */          
 
     my.modelUpdate =
         (...Ms) => my.model(Object.assign(my.model(), ...Ms)); 
@@ -114,28 +124,38 @@ function fst (tag, attr, branch) {
         (xs, sig) => my.hook(xs, fst.emit(sig, d => d));
 
     my.update = (evt, update=__.id, ...then) => {
+
+        [update, ...then] = parseUp(update, ...then);
+
+        let doUpdate = D => {
+            let M = my.model();
+            M = Object.assign(M, update(D, M));
+            __.do(...my._onUpdate)(D, M);
+            return my.model(M);
+        };
+        let listener = __.pipe(
+            evt => __.logs('D: ')(evt.detail),
+            doUpdate, 
+            ...then
+        );
+        my.doc().addEventListener('fst#'+evt, listener);
+
+        return my;
+    }
+    
+    my.up = my.update;
+    function parseUp (update, ...then) {
         if (typeof update === 'boolean') {
-            then = [update].concat(then);
+            then = [update, ...then];
             update = d => d;
         }
         if (!then.length || typeof then[0]  !== 'boolean') 
-            then = [true].concat(then);
+            then = [true, ...then];
         then[0] = then[0]
             ? my.redraw
             : () => my;
-        let doUpdate = e => {
-            Object.assign(
-                my.model(),
-                update(e.detail, my.model())
-            );
-            __.do(...my._onUpdate)(e.detail, my.model());
-            return my.model();
-        };
-        let listener = __.pipe(doUpdate, ...then);
-        my.doc().addEventListener('fst#'+evt, listener);
-        return my;
+        return __.log([update, ...then]);
     }
-    my.up = my.update;
 
     my.redraw = 
         () => {
@@ -266,7 +286,7 @@ function fst (tag, attr, branch) {
     }
 
     my._fst = true;
-    return __.getset(my, self, selfA);
+    return __.getset(my, self) //, selfA);
 }
 fst.Node = (...xs) => fst(...xs); 
 
@@ -298,7 +318,7 @@ fst.on = function (name, ...then) {
     );
 }
 
-fst.emit = function (name, data={}, ...more) {
+fst.emit = function (name, data=__.id, ...more) {
     
     if (!name) 
         return __.null;

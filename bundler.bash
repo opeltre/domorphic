@@ -1,6 +1,6 @@
 #!/bin/bash
 
-deps=('__' 'fst' 'elements' 'ajax' 'export')
+deps=('__' 'fst' '_fst' 'elements' 'ajax' 'export')
 bundle='bundle.js'
 #dir='/home/shevket/js/vv/'
 
