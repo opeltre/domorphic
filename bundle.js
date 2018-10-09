@@ -636,7 +636,7 @@ fst.textarea =
     (id, key=id, css='') => {
         let data = 
             val => { let d = {}; d[key] = val; return d };
-        return fst('textarea#'+ id + css)
+        return fst('textarea#'+ id + '-' + key + css)
             .value(M => M[key])
             .on('change', 
                 fst.emit('-> ' + id, t => data(t.value)))
