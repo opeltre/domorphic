@@ -1,8 +1,16 @@
 const fs = require('fs').promises,
     path = require('path'),
+    process = require('process'),
     { JSDOM } = require('jsdom'),
     fst = require('./bundle'),
     __ = fst.__; 
+
+let cwd = process.cwd();
+
+fst.cd = (dirname) => {
+    cwd = dirname || process.cwd();
+    return fst;
+}
 
 fst.doc = (src) => {
 
@@ -76,12 +84,11 @@ fst.doc = (src) => {
         (...ns) => my.nodes(my.nodes().concat(ns));
 
     return __.getset(my, self, selfA);
-    
 }
 
 /* ... */
 function htmlPath (p) {
-    return path.join((module.parent.filename || __filename), '..', p + '.html')
+    return path.join(cwd, p + '.html');
 }
 
 let ifRelative = (f) => 
@@ -90,8 +97,8 @@ let ifRelative = (f) =>
         : f(name);
 
 let defaultPaths = {
-    style : ifRelative(name => '/style/'+ name + '.css'), 
-    script : ifRelative(name => '/lib/' + name + '.js')
+    style   : ifRelative(name => '/style/'+ name + '.css'), 
+    script  : ifRelative(name => '/lib/' + name + '.js')
 };
 
 let paths = defaultPaths;
