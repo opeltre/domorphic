@@ -7,51 +7,77 @@ function fst (tag, attr, branch) {
     var {tag, attr, branch} = parse(tag, attr, branch);
     
     var self = {
-        tag :       tag,
+        M:          {},
+        plant :     null,
         stem :      null,
         node :      null,
         parentNode : null,
-        model :     {},
-        doc :       fst.document,
+        tag :       tag,
+        svg:        tag === 'svg' || tag === 'g',
+        class:      '',
         html :      '',
         value :     '',
-        plant :     null,
         properties: {},
-        svg:        tag === 'svg' || tag === 'g'
+        doc :       fst.document,
     };
     
+
     let selfA = {
-        branches : branch || []
+        model : []
     }
 
-    let attributes = attr, 
+    let branches = branch || [],
+        attributes = attr, 
         events = {};
 
-    function my (model, append = true) {
+    let Model = (f, ...fs) => 
+        M => f
+            ? Model(...fs)(Object.assign(M, f(M)))
+            : M;
+
+    function my (M, paint=true) {
         /** model **/
-        model = model || my.model();
-        let $m = x => isModelFunction(x) ? x(model) : x;
+
+        /****  my.M(M0).model(M => ({ ... })) *****/
+        M = M || 
+            (self.stem ? self.stem.M() : self.M); 
+        self.M = __.setKeys(my.getModel)(M);
+        let $M = x => Mfunction(x) ? x(self.M) : x;
         /** node **/
         my
-            .model(model)
             .nodeCreate()
-            .nodeConf($m)
-            .nodeAppend(append);
+            .nodeConf($M)
+            .nodeAppend(paint);
         /** branch **/
-        __.log($m(my.branch())).map($m)
+        $M(my.branch())
+            //.map($M)
             .map(parseBranch)
             .map(b => b.link(my))
-            .forEach(b => b(model));
+            .forEach(b => b(self.M));
         /** plant **/
-        return (!self.stem && append)
-            ? my.nodePaint($m).parentNode()
+        return !self.stem && paint
+            ? my.nodePaint($M).parentNode()
             : my.parentNode();
     }
 
+    my.getModel = M => {
+        let [f, ...fs] = selfA.model;
+        let ismf = 
+            f => Mfunction(f);
+        let tomf =
+            f => ismf(f) ? f : () => f;
+        return ismf(f)
+            ? Model(...fs.map(tomf))( f(M) )
+            : Model(...[f, ...fs].map(tomf))( M );
+    }
+
+    my.modelUpdate =
+        (...Ms) => my.M(Object.assign(self.M, ...Ms)); 
+
     my.branch = (b) => {
         if (typeof b === 'undefined')
-            return selfA.branches
-        selfA.branches = b;
+            return branches
+        branches = b;
         return my;
     }
     
@@ -64,16 +90,159 @@ function fst (tag, attr, branch) {
                     : my.branches(...[b, ...bs].map(parseBranch));
   */          
 
-    my.modelUpdate =
-        (...Ms) => my.model(Object.assign(my.model(), ...Ms)); 
    
-    my.start = (when, model, append=true) => {
-        /* up ?? */
+    my.on = (evt, listener, capture=false) => {
+        if (!listener)
+            return events[evt];
+        if (events[evt])
+            events[evt].push([listener, capture]);
+        else
+            events[evt] = [[listener, capture]];
+        return my;
+    }
+
+    my._onUpdate =  [];
+
+    my.hook = 
+        (xs, ...hooks) => {
+            let hook = data => {
+                let d = __.subKeys(...fst._(xs))(data || {});
+                if (!__.emptyKeys(d))
+                    __.do(...hooks)(d, self.M);
+            }
+            my._onUpdate.push(hook);
+            return my;
+        };
+
+    my.signal = 
+        (xs, sig) => my.hook(xs, fst.emit(sig, d => d));
+
+    my.update = (evt, update=__.id, ...then) => {
+
+        [update, ...then] = parseUp(update, ...then);
+
+        let doUpdate = D => {
+            let M = self.M;
+            M = Object.assign(M, update(D, M));
+            __.do(...my._onUpdate)(D, M);
+            return my.M(M);
+        };
+        let listener = __.pipe(
+            evt => evt.detail,
+            doUpdate, 
+            ...then
+        );
+        my.doc().addEventListener('fst#'+evt, listener);
+
+        return my;
+    }
+    my.up = my.update;
+
+    function parseUp (update, ...then) {
+        if (typeof update === 'boolean') {
+            then = [update, ...then];
+            update = d => d;
+        }
+        if (!then.length || typeof then[0]  !== 'boolean') 
+            then = [true, ...then];
+        then[0] = then[0]
+            ? my.redraw
+            : () => my;
+        return [update, ...then];
+    }
+
+    my.redraw = 
+        () => {
+            let node =  my.node();
+            let fragment = my(false, !node);
+            if (node) 
+                node.replaceWith(fragment);
+            return my;
+        };
+    
+    my.link = (stem) => my
+        .stem(stem)
+        .svg(stem.svg())
+        .doc(stem.doc());
+
+    my.attr = obj => {
+        if (typeof obj === 'string')
+            return attributes[obj];
+        Object.assign(attributes, obj);
+        return my;
+    }
+
+    my.show = (str) => {
+        console.log(str);
+        console.log(self);
+        return my;
+    }
+
+    my.reclass = f => {
+        my.class(f(my.class()));
+    }
+
+    my.nodeCreate = () => my.node(
+        my.svg()
+            ? createSvg(my.doc(), tag)
+            : my.doc().createElement(tag)
+    );
+
+    my.nodeSet = (key, val) => {
+        my.svg()
+            ? setSvg(key, val, my.node())
+            : my.node().setAttribute(key,val);
+        return my;
+    }
+
+    my.nodeConf = ($M) => {
+
+        let forKeys = o => f => __.forKeys(f)(o),
+            M = $M(x => x),
+            $MListener = l => (t => l(t, M));
+
+        forKeys(attributes)(
+            key => my.nodeSet(key, $M(my.attr(key)))
+        );
+        forKeys(self.properties)(
+            key => my.node()[key] = $M(self.properties[key])
+        );
+        forKeys(events)(
+            key => my.on(key).forEach(
+                list => my.node()
+                    .addEventListener(key, ...list.map($MListener))
+            )
+        );
+        my.node().innerHTML = $M(my.html());
+        my.node().value = $M(my.value());
+
+        return my;
+    }
+
+    my.nodeAppend = (append) => {
+        let parentNode = (self.stem && append)
+                ? self.stem.node()
+                : self.doc.createDocumentFragment();
+        parentNode.appendChild(self.node);
+        return my.parentNode(parentNode);
+    }
+
+    my.nodePaint = ($M) => {
+        let target = self.plant
+            ? self.doc.querySelector($M(self.plant))
+            : self.doc.body;
+        target.appendChild(my.parentNode());
+        return my;
+    }
+
+
+/**************/
+    my.start = (when, M, append=true) => {
         if (when === 'now')
-            return my(model, append);
+            return my(M, append);
         else {
             let M = e => Object.assign(
-                my.model(),
+                self.M,
                 model || {},
                 e.detail
             );
@@ -96,148 +265,6 @@ function fst (tag, attr, branch) {
         }
         return my;
     }
-
-    my.on = (evt, listener, capture=false) => {
-        if (!listener)
-            return events[evt];
-        if (events[evt])
-            events[evt].push([listener, capture]);
-        else
-            events[evt] = [[listener, capture]];
-        return my;
-    }
-
-    my._onUpdate =  [];
-
-    my.hook = 
-        (xs, ...hooks) => {
-            let hook = data => {
-                let d = __.subKeys(...fst._(xs))(data || {});
-                if (!__.emptyKeys(d))
-                    __.do(...hooks)(d, my.model());
-            }
-            my._onUpdate.push(hook);
-            return my;
-        };
-
-    my.signal = 
-        (xs, sig) => my.hook(xs, fst.emit(sig, d => d));
-
-    my.update = (evt, update=__.id, ...then) => {
-
-        [update, ...then] = parseUp(update, ...then);
-
-        let doUpdate = D => {
-            let M = my.model();
-            M = Object.assign(M, update(D, M));
-            __.do(...my._onUpdate)(D, M);
-            return my.model(M);
-        };
-        let listener = __.pipe(
-            evt => __.logs('D: ')(evt.detail),
-            doUpdate, 
-            ...then
-        );
-        my.doc().addEventListener('fst#'+evt, listener);
-
-        return my;
-    }
-    
-    my.up = my.update;
-    function parseUp (update, ...then) {
-        if (typeof update === 'boolean') {
-            then = [update, ...then];
-            update = d => d;
-        }
-        if (!then.length || typeof then[0]  !== 'boolean') 
-            then = [true, ...then];
-        then[0] = then[0]
-            ? my.redraw
-            : () => my;
-        return __.log([update, ...then]);
-    }
-
-    my.redraw = 
-        () => {
-            let node =  my.node();
-            let fragment = my(false, !node);
-            if (node) 
-                node.replaceWith(fragment);
-            return my;
-        };
-    
-    my.link = (stem) => my
-        .stem(stem)
-        .svg(stem.svg())
-        .doc(stem.doc())
-        .model(stem.model());
-
-    my.attr = obj => {
-        if (typeof obj === 'string')
-            return attributes[obj];
-        Object.assign(attributes, obj);
-        return my;
-    }
-
-    my.show = (str) => {
-        console.log(str);
-        console.log(self);
-        return my;
-    }
-
-    my.nodeCreate = () => my.node(
-        my.svg()
-            ? createSvg(my.doc(), tag)
-            : my.doc().createElement(tag)
-    );
-
-    my.nodeSet = (key, val) => {
-        my.svg()
-            ? setSvg(key, val, my.node())
-            : my.node().setAttribute(key,val);
-        return my;
-    }
-
-    my.nodeConf = ($m) => {
-
-        let forKeys = o => f => __.forKeys(f)(o),
-            model = $m(x => x),
-            $mListener = l => (t => l(t, model));
-
-        forKeys(attributes)(
-            key => my.nodeSet(key, $m(my.attr(key)))
-        );
-        forKeys(self.properties)(
-            key => my.node()[key] = $m(self.properties[key])
-        );
-        forKeys(events)(
-            key => my.on(key).forEach(
-                list => my.node()
-                    .addEventListener(key, ...list.map($mListener))
-            )
-        );
-        my.node().innerHTML = $m(my.html());
-        my.node().value = $m(my.value());
-
-        return my;
-    }
-
-    my.nodeAppend = (append) => {
-        let parentNode = (self.stem && append)
-                ? self.stem.node()
-                : self.doc.createDocumentFragment();
-        parentNode.appendChild(self.node);
-        return my.parentNode(parentNode);
-    }
-
-    my.nodePaint = ($m, append) => {
-        let target = self.plant
-            ? self.doc.querySelector($m(self.plant))
-            : self.doc.body;
-        target.appendChild(my.parentNode());
-        return my;
-    }
-
     function createSvg (doc, tag) {
         var svgNS = "http://www.w3.org/2000/svg"
         var node = doc.createElementNS(svgNS, tag)
@@ -256,7 +283,7 @@ function fst (tag, attr, branch) {
 
     function parseBranch (b) {
         let t = x => (typeof x);
-        if (t(b) === 'string' || isModelFunction(b))
+        if (t(b) === 'string' || Mfunction(b)) 
             return fst('text').html(b)
         if (Array.isArray(b)) 
             return (t(b[0]) === 'function')
@@ -265,33 +292,33 @@ function fst (tag, attr, branch) {
         return b
     }
 
-    function parse (tag, attr={}, branch=[]) {
-        /** empty {} attr is boring **/
-        if (Array.isArray(attr))
-            [attr, branch] = [{}, attr];
+    function parse (tag, a={}, b=[]) {
+        let isBranches = 
+            a => (Array.isArray(a) || Mfunction(a));
+        if ( isBranches(a) )
+            /* attr is branch */
+            [a, b] = [{}, a];
         /** match "tagname#id.class.class2" **/
-        let {classes, tagname, id} = fst.parse(tag);
+        let {classes, tagname, id} = fst.parseTag(tag);
         if (id) 
-            Object.assign(attr, {id});
+            Object.assign(a, {id});
         if (classes.length)
-            Object.assign(attr, {class: classes.join(' ')});
-        /** parse branches **/
-        branch = branch.map(parseBranch);
+            Object.assign(a, {class: classes.join(' ')});
         /** out! **/
-        return {tag: tagname, attr, branch};
+        return {tag: tagname, attr: a, branch: b};
     }
 
-    function isModelFunction (x) {
+    function Mfunction (x) {
         return (typeof x === 'function' && !x._fst);
     }
 
     my._fst = true;
-    return __.getset(my, self) //, selfA);
+
+    return __.getset(my, self, selfA);
 }
-fst.Node = (...xs) => fst(...xs); 
 
 /*** parse ***/
-fst.parse = function (tag) {
+fst.parseTag = function (tag) {
     /** match "tagname#id.class.class2" **/
     let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)/g,
         matches = tag.match(re);

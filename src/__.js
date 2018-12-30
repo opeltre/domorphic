@@ -10,7 +10,10 @@ __.id =
     x => x;
 
 __.return = 
-    x => y => x;
+    x => () => x;
+
+__.val = 
+    (f, x) => typeof f === 'function' ? f(x) : f;
 
 __.X = 
     f => 
@@ -68,6 +71,12 @@ __.subKeys =
                 .forEach(k => sub[k] = obj[k]);
             return sub;
         };
+
+__.setKeys = 
+    (f, ...fs) => 
+        obj => f 
+            ? __.setKeys(...fs)(Object.assign(obj, __.val(f, obj)))
+            : obj;
 
 __.emptyKeys =
     obj => {
