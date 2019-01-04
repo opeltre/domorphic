@@ -1,62 +1,63 @@
+# domorphic
+
 [domorphic](http://mathchat.fr:8090/ex/index.html)
 is a plain javascript program and 
 a DOM templating philosophy.
 
-# domeomorphisms 
+## domorphisms 
 
-The basic domorphic object is a function `f` 
+The basic domorphic instance is a function `f` 
 mapping a js model object `M`
-to a dom node `N`:
+to a DOM node `N`:
 
 ```javascript
-let f = dom('h1').html(M => M.msg),
-    M = { msg: 'Hmmm... Shai Halud' },
-    N = f(M);
+//  M : a
+let M = { msg: 'Hmmm... Shai Halud' };
+
+//  f : a -> node
+let f = dom('h1').html(M => M.msg);
+
+//  N : node
+let N = f(M);
 
 document.body.appendChild(N);
 ```
 
-We call such functions morphisms.
-We write `dom a` for the type of those morphisms 
-that accept models of type `a`:
-
-```
-dom a = a -> node 
-
-M :: a         
-f :: dom a   => f(M) :: node
+We call such functions morphisms and write
+`dom a` for the type of morphisms 
+accepting models of type `a`:
+ 
+```javascript
+//  dom a = a -> node
 ```
 
-Any function `u :: a -> b` 
-may be pulled back to a function `U :: dom b -> dom a` 
+The `dom` type assignment is a contravariant functor,
+as any function `u : a -> b` 
+has a pull-back `U : dom b -> dom a` 
 by right composition on the model.
 
 ```javascript
+//  u : a -> b
 let u = ({ x, y })=> 
     ({
         transform: `translate(${x} ${y})` 
     });
 
-let f = dom('circle').attr(M => M),
-    U = dom.functor(u),
-    g = U(f);
+//  f : dom b
+let f = dom('circle').attr(M => M);
+
+//  U : ( dom b -> dom a )
+let U = dom.functor(u);
+
+//  g : dom a
+let g = U(f);
 
 document.body.appendChild(
     g({ x: 2, y: 3})
 );
 ```
 
-The above is equivalent to setting `g = f.model(u)` 
-or `U = f => f.model(u)`.
-
-```
-dom.functor :: ( a -> b ) -> ( dom b -> dom a )
-
-u :: a -> b    
-f :: dom b  => U(f) :: dom a 
-```
-
-# functors
+## Indexing functors
 
 Given a type `a`, 
 let us write `{ a }` and `[ a ]` 
