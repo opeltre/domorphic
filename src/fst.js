@@ -37,11 +37,9 @@ function fst (tag, attr, branch) {
 
     function my (M, paint=true) {
         /** model **/
-
-        /****  my.M(M0).model(M => ({ ... })) *****/
-        M = M || 
-            (self.stem ? self.stem.M() : self.M); 
-        self.M = __.setKeys(my.getModel)(M);
+        self.M = __.setKeys(my.getModel)(
+            M || ( self.stem ? self.stem.M() : self.M )  
+        );
         let $M = x => Mfunction(x) ? x(self.M) : x;
         /** node **/
         my
@@ -50,15 +48,22 @@ function fst (tag, attr, branch) {
             .nodeAppend(paint);
         /** branch **/
         $M(my.branch())
-            //.map($M)
+            .map($M)
             .map(parseBranch)
             .map(b => b.link(my))
             .forEach(b => b(self.M));
-        /** plant **/
+        return my;
+        /** plant 
         return !self.stem && paint
             ? my.nodePaint($M).parentNode()
             : my.parentNode();
+        **/
     }
+
+    my.link = (stem) => my
+        .stem(stem)
+        .svg(stem.svg())
+        .doc(stem.doc());
 
     my.getModel = M => {
         let [f, ...fs] = selfA.model;
@@ -71,36 +76,7 @@ function fst (tag, attr, branch) {
             : Model(...[f, ...fs].map(tomf))( M );
     }
 
-    my.modelUpdate =
-        (...Ms) => my.M(Object.assign(self.M, ...Ms)); 
-
-    my.branch = (b) => {
-        if (typeof b === 'undefined')
-            return branches
-        branches = b;
-        return my;
-    }
-    
     /*
-    my.branch =
-        (b,...bs) => (typeof b === 'undefined')
-            ? my.branches()
-            : (Array.isArray(b) && !(typeof b[0] === 'string')) 
-                    ? my.branches(b.map(parseBranch))
-                    : my.branches(...[b, ...bs].map(parseBranch));
-  */          
-
-   
-    my.on = (evt, listener, capture=false) => {
-        if (!listener)
-            return events[evt];
-        if (events[evt])
-            events[evt].push([listener, capture]);
-        else
-            events[evt] = [[listener, capture]];
-        return my;
-    }
-
     my._onUpdate =  [];
 
     my.hook = 
@@ -113,43 +89,25 @@ function fst (tag, attr, branch) {
             my._onUpdate.push(hook);
             return my;
         };
-
     my.signal = 
         (xs, sig) => my.hook(xs, fst.emit(sig, d => d));
+    */
 
-    my.update = (evt, update=__.id, ...then) => {
+    my.update = (evt, update, ...then) => {
 
-        [update, ...then] = parseUp(update, ...then);
-
-        let doUpdate = D => {
-            let M = self.M;
-            M = Object.assign(M, update(D, M));
-            __.do(...my._onUpdate)(D, M);
-            return my.M(M);
-        };
         let listener = __.pipe(
-            evt => evt.detail,
-            doUpdate, 
+            evt => evt.detail
+            D => __.setKeys(update(D, self.M))(self.M),
+            __.return(my),
             ...then
         );
         my.doc().addEventListener('fst#'+evt, listener);
-
         return my;
     }
-    my.up = my.update;
 
-    function parseUp (update, ...then) {
-        if (typeof update === 'boolean') {
-            then = [update, ...then];
-            update = d => d;
-        }
-        if (!then.length || typeof then[0]  !== 'boolean') 
-            then = [true, ...then];
-        then[0] = then[0]
-            ? my.redraw
-            : () => my;
-        return [update, ...then];
-    }
+    my.up = (evt, ...then) => my.update(evt, __.id, ...then);
+    
+    my.refresh = (evt) => my.up(evt, f => f.redraw(), ...then);
 
     my.redraw = 
         () => {
@@ -160,28 +118,6 @@ function fst (tag, attr, branch) {
             return my;
         };
     
-    my.link = (stem) => my
-        .stem(stem)
-        .svg(stem.svg())
-        .doc(stem.doc());
-
-    my.attr = obj => {
-        if (typeof obj === 'string')
-            return attributes[obj];
-        Object.assign(attributes, obj);
-        return my;
-    }
-
-    my.show = (str) => {
-        console.log(str);
-        console.log(self);
-        return my;
-    }
-
-    my.reclass = f => {
-        my.class(f(my.class()));
-    }
-
     my.nodeCreate = () => my.node(
         my.svg()
             ? createSvg(my.doc(), tag)
@@ -265,6 +201,45 @@ function fst (tag, attr, branch) {
         }
         return my;
     }
+
+    my.attr = obj => {
+        if (typeof obj === 'string')
+            return attributes[obj];
+        Object.assign(attributes, obj);
+        return my;
+    }
+
+    my.reclass = f => {
+        my.class(f(my.class()));
+    }
+
+   
+    my.on = (evt, listener, capture=false) => {
+        if (!listener)
+            return events[evt];
+        if (events[evt])
+            events[evt].push([listener, capture]);
+        else
+            events[evt] = [[listener, capture]];
+        return my;
+    }
+
+    my.branch = (b) => {
+        if (typeof b === 'undefined')
+            return branches
+        branches = b;
+        return my;
+    }
+    
+    /*
+    my.branch =
+        (b,...bs) => (typeof b === 'undefined')
+            ? my.branches()
+            : (Array.isArray(b) && !(typeof b[0] === 'string')) 
+                    ? my.branches(b.map(parseBranch))
+                    : my.branches(...[b, ...bs].map(parseBranch));
+  */          
+
     function createSvg (doc, tag) {
         var svgNS = "http://www.w3.org/2000/svg"
         var node = doc.createElementNS(svgNS, tag)
@@ -307,15 +282,23 @@ function fst (tag, attr, branch) {
         /** out! **/
         return {tag: tagname, attr: a, branch: b};
     }
+    
+    my._fst = true;
 
     function Mfunction (x) {
         return (typeof x === 'function' && !x._fst);
     }
 
-    my._fst = true;
+    my.show = (str) => {
+        console.log(str);
+        console.log(self);
+        return my;
+    }
 
     return __.getset(my, self, selfA);
+
 }
+
 
 /*** parse ***/
 fst.parseTag = function (tag) {
