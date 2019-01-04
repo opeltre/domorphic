@@ -25,14 +25,13 @@ document.body.appendChild(N);
 
 We call such functions morphisms and write
 `dom a` for the type of morphisms 
-accepting models of type `a`:
+accepting models of type `a`.
  
 ```javascript
 //  dom a = a -> node
 ```
 
-The `dom` type assignment is a contravariant functor,
-as any function `u : a -> b` 
+Any function `u : a -> b` 
 has a pull-back `U : dom b -> dom a` 
 by right composition on the model.
 
@@ -57,6 +56,11 @@ document.body.appendChild(
 );
 ```
 
+The `dom` type assignment is thus a contravariant functor.
+
+```
+//  dom.functor :: ( a-> b ) -> ( dom b -> dom a )
+```
 ## Indexing functors
 
 Given a type `a`, 
