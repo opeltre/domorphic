@@ -1,6 +1,4 @@
-/* 
- * L'ARBRE DOM VIRTUEL
- */
+/*** DOMORPHIC ***/
 
 let Parse = require('./parse'),
     Node = require('./node');

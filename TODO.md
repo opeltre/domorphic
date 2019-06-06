@@ -1,4 +1,4 @@
-dom :: model -> node
+dom a :: a -> node
 
 -> moins s'emmerder avec les branches:
     - dom.append
@@ -12,4 +12,4 @@ dom :: model -> node
 -> exporter seulement les formes impures:
     - dom.node
     - dom.stack
-    - dom.keys
+   - dom.keys

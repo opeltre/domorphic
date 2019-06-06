@@ -1,3 +1,10 @@
+// model.js
+// 
+//  Essentially a tweaked implementation of '$':
+//      $ :: a -> (a -> b) -> b
+//      $ = M -> f -> f(M)
+//  To account for the fact that attributes, etc. 
+//  might be constant values or model-dependent functions. 
 
 function Model (M) {
     
@@ -10,9 +17,9 @@ function Model (M) {
     my.listen = 
         l => (t => l(t, M));
 
-    my.keys = __.mapKeys(my);
+    my.mapKeys = __.mapKeys(my);
 
-    my.events = __.mapKeys(my.listen)
+    my.mapEvents = __.mapKeys(my.listen)
        
     /*
     my.getModel = M => {
