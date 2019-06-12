@@ -6,6 +6,8 @@
 //  To account for the fact that attributes, etc. 
 //  might be constant values or model-dependent functions. 
 
+let __ = require('./__');
+
 let isMfunction = 
     x => typeof x === 'function' && !x._dom;
 

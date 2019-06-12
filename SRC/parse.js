@@ -1,4 +1,5 @@
-let Model = require('./model');
+let Model = require('./model'),
+    dom = require('./dom');
 
 let Parse = {};
 
