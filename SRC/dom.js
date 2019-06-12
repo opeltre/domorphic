@@ -1,165 +1,178 @@
-/*** DOMORPHIC ***/
+let __ = require('./__'),
+    Parse = require('./parse'),
+    Model = require('./model');
 
-let Parse = require('./parse'),
-    Node = require('./node');
+module.exports = dom;
 
 function dom (tag, attr, branch) {
 
-    let {tag, attr, branch} = Parse.args(tag, attr, branch);
+    let self = {
+        node:   null,
+        M:      {},
+        target: null
+    };
+
+    let pure = domPure(tag, attr, branch);
+
+    let my = 
+        M => {
+
+            my.update(M);
+
+            let node = pure(self.M);
+
+            __.do(
+                my.node() ? my.replace : my.put,
+                my.node
+            )(node);
+        }
+
+    Object.assign(my, pure);
+
+    my.update = 
+        M => {
+
+            my.M(__.setKeys(my.model(M))(self.M));
+            
+            my.branch()
+                .forEach(b => b.update(M));
+
+            return my;
+        }
+
+    my.pure = M => pure(M);
+
+    my.replace = 
+        node => my.node().replaceWith(node);
+
+    my.put = 
+        node => (my.doc().querySelector(self.target) || my.doc().body)
+            .appendChild(node);
+
+    my.remove = 
+        () => my.node().remove();
+
+    return __.getset(my, self);
+}
+
+
+// dom a :: a -> node
+
+function domPure (t, a, b) {
+        
+    let {tag, attr, branch} = Parse.args(t, a, b);
 
     let self = {
-        M:          {},
-        plant :     null,
-        stem :      null,
-        node :      null,
-        parentNode : null,
-        doc :       dom.document,
+        // node construction 
+        tag:        tag,
+        svg:        tag === 'svg' || tag === 'g',
+        attr:       attr,
+        prop:       {},
+        on:         {},
+        branch:     branch,
+        html:       '',
+        value:      '',
+        class:      '',
+        doc:        dom.document,
+        // model pull-back
+        model:      M => M
     };
-    
 
-    let selfA = {
-        model : []
-    }
+    let my = __.pipe(
+        self.model,
+        Model,
+        M => {
+            let node = Node(self)(M);
 
-    let branches = branch || [],
-        attributes = attr, 
-        events = {};
+            self.branch
+                .forEach(b => node.appendChild(b(M)));
 
-    let Model = (f, ...fs) => 
-        M => f
-            ? Model(...fs)(Object.assign(M, f(M)))
-            : M;
+            return node;
+        }
+    );
 
-    function my (M, paint=true) {
-        /** model **/
-        self.M = __.setKeys(my.getModel)(
-            M || ( self.stem ? self.stem.M() : self.M )  
-        );
-
-        /** node **/
-        let node = Node(N, doc)(M);
-
-        /** branch **/
-        $M(my.branch())
-            .map($M)
-            .map(parseBranch)
-            .map(b => b.link(my))
-            .forEach(b => b(self.M));
-        return my;
-    }
-
-    my.link = (stem) => my
-        .stem(stem)
-        .svg(stem.svg())
-        .doc(stem.doc());
-
-    my.update = (evt, update, ...then) => {
-
-        let listener = __.pipe(
-            evt => evt.detail
-            D => __.setKeys(update(D, self.M))(self.M),
-            __.return(my),
-            ...then
-        );
-        my.doc().addEventListener('dom#'+evt, listener);
-        return my;
-    }
-
-    my.up = (evt, ...then) => my.update(evt, __.id, ...then);
-    
-    my.refresh = (evt) => my.up(evt, f => f.redraw(), ...then);
-
-    my.redraw = 
-        () => {
-            let node =  my.node();
-            let fragment = my(false, !node);
-            if (node) 
-                node.replaceWith(fragment);
+    my.append = 
+        (...bs) => {
+            self.branch = [...self.branch, ...bs];
             return my;
         };
 
-    my.attr = obj => {
-        if (typeof obj === 'string')
-            return attributes[obj];
-        Object.assign(attributes, obj);
-        return my;
-    }
-
-    my.reclass = f => {
-        my.class(f(my.class()));
-    }
-
-   
-    my.on = (evt, listener, capture=false) => {
-        if (!listener)
-            return events[evt];
-        if (events[evt])
-            events[evt].push([listener, capture]);
-        else
-            events[evt] = [[listener, capture]];
-        return my;
-    }
-
-    my.branch = (b) => {
-        if (typeof b === 'undefined')
-            return branches
-        branches = b;
-        return my;
-    }
-
     my._dom = true;
 
-    return __.getset(my, self, selfA);
+    return __.getset(my, self);
+}
 
+dom.pure = domPure;
+
+// node a :: a -> singleNode
+
+function Node (N) { 
+
+    let parentNode = null;
+
+    let create = 
+        () => N.svg
+            ? createSvg(N.doc, N.tag)
+            : N.doc.createElement(N.tag)
+
+    let setAttribute = 
+        (k, v, node) => N.svg
+            ? setSvg(k, v, node)
+            : node.setAttribute(k, v, node)
+
+    let my = 
+        M => {
+            let node = create();
+
+            __.forKeys(
+                (v, k) => setAttribute(k, v, node)
+            )(M.mapKeys(N.attr));
+
+            __.forKeys(
+                (v, k) => node[k] = v
+            )(M.mapKeys(N.prop));
+
+            __.forKeys(
+                (v, k) => node.addEventListener(k, v)
+            )(M.mapEvents(N.on));
+
+            node.innerHTML = M(N.html);
+
+            node.value = M(N.value);
+
+            return node;
+        }
+
+    return my;
 }
 
 
-/*** emit ***/
-
-dom.on = function (name, ...then) {
-    dom.document.addEventListener(
-        'dom#' + name,
-        __.do(...then)
-    );
-}
-
-dom.emit = function (name, data=__.id, ...more) {
-    
-    if (!name) 
-        return __.null;
-
-    let getData = 
-         (evt = {}) => (typeof data === 'function')
-            ? data(evt.target || evt)
-            : data;
-    let emit = 
-        evt => dom.document.dispatchEvent(new CustomEvent(
-            'dom#' + name,
-            {
-                bubbles: true,
-                detail: getData(evt)
-            }
-        ));
-    let debug = 
-        evt => {
-            alert(name);
-            __.logs(name)(getData(evt));
-        };
-    let handler = 
-        __.if(
-            () => dom.debug,
-            __.do(emit, debug),
-            emit
-        );
-    return __.do(handler, dom.emit(...more));
-
-}
+/*************     dom     ***************/
 
 dom.document = (typeof document === 'undefined') 
     ? {dispatchEvent: __.null, addEventListener: __.null}
     : document;
-
+/*
 dom.document.addEventListener(
     'DOMContentLoaded', 
     dom.emit('dom')
 );
+*/
+
+/*************      svg      *************/
+
+function setSvg (key, val, node) {
+    node.setAttributeNS(null, key, val);
+}
+
+function createSvg (doc, tag) {
+    let svgNS = "http://www.w3.org/2000/svg",
+        node = doc.createElementNS(svgNS, tag);
+    if (tag === 'svg')
+        node.setAttributeNS(
+            "http://www.w3.org/2000/xmlns/", 
+            "xmlns:xlink", 
+            "http://www.w3.org/1999/xlink"
+        );
+    return node;
+}

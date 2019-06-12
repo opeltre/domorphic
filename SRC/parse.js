@@ -1,3 +1,5 @@
+let Model = require('./model');
+
 let Parse = {};
 
 Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
@@ -5,7 +7,7 @@ Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
     (tag, a={}, b=[]) => {
 
         let isBranches = 
-            a => (Array.isArray(a) || Mfunction(a));
+            a => (Array.isArray(a) || Model.isFunction(a));
         if ( isBranches(a) )
             [a, b] = [{}, a];
 

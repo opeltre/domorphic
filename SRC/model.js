@@ -6,11 +6,11 @@
 //  To account for the fact that attributes, etc. 
 //  might be constant values or model-dependent functions. 
 
+let isMfunction = 
+    x => typeof x === 'function' && !x._dom;
+
 function Model (M) {
     
-    let isMfunction = 
-        x => typeof x === 'function' && !x._dom;
-
     let my = 
         x => isMfunction(x) ? x(M) : x;
     
@@ -43,4 +43,8 @@ function Model (M) {
     return my;
 
 };
-    
+
+Model.isFunction = isMfunction;
+
+module.exports = Model;
+
