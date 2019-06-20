@@ -4,7 +4,7 @@ let __ = require('./__'),
 
 module.exports = dom;
 
-function dom (tag, attr, branch) {
+dom.node = (pure) => {
 
     let self = {
         node:   null,
@@ -12,53 +12,66 @@ function dom (tag, attr, branch) {
         target: null
     };
 
-    let pure = domPure(tag, attr, branch);
+    let my = pure;
 
-    let my = 
+    my.show = 
         M => {
-
             my.update(M);
 
             let node = pure(self.M);
 
             __.do(
-                my.node() ? my.replace : my.put,
+                my.node() 
+                    ? n => my.node().replaceWith(n)
+                    : n => my.root().appendChild(n),
                 my.node
             )(node);
-        }
+        };
 
-    Object.assign(my, pure);
+    my.root = 
+        () => my.doc().querySelector(self.target)
+            || my.doc().body;
+
+    my.remove = 
+        () => {
+            my.node().remove();
+            return my.node(null);
+        }
 
     my.update = 
         M => {
+            my.M(
+                __.setKeys(my.model()(M))(self.M)
+            );
 
-            my.M(__.setKeys(my.model(M))(self.M));
-            
-            my.branch()
-                .forEach(b => b.update(M));
+            let recur = M => 
+                b => b.update 
+                    ? b.update(M)
+                    : b.branch().forEach(recur(b.model()(M)));
+
+            my.branch().forEach(recur(my.M()));
 
             return my;
         }
 
-    my.pure = M => pure(M);
-
-    my.replace = 
-        node => my.node().replaceWith(node);
-
-    my.put = 
-        node => (my.doc().querySelector(self.target) || my.doc().body)
-            .appendChild(node);
-
-    my.remove = 
-        () => my.node().remove();
-
     return __.getset(my, self);
 }
+
+dom.stack = (pure) => {
+
+    let self = {
+        nodes : [],
+        M:      [],
+        target: null
+    };
+
+}
+
 
 
 // dom a :: a -> node
 
-function domPure (t, a, b) {
+function dom (t, a, b) {
         
     let {tag, attr, branch} = Parse.args(t, a, b);
 
@@ -102,9 +115,10 @@ function domPure (t, a, b) {
     return __.getset(my, self);
 }
 
-dom.pure = domPure;
+
 
 // node a :: a -> singleNode
+// (not exported) 
 
 function Node (N) { 
 
