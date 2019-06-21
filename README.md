@@ -36,8 +36,8 @@ document.body.appendChild(N);
 We'll denote by `dom a` the type
 building nodes from objects of type `a`:
  
-```javascript
-//  dom a = a -> node
+```
+//  dom a :: a -> node
 ```
 
 ### functoriality
@@ -92,7 +92,7 @@ let f = dom('svg', [
 //  n : dom_ a
 let n = f.node();
 
-/* * * * * * * * * /
+/* * * * * * * * * */
 
 //  Model : a
 let Model = n.M();
