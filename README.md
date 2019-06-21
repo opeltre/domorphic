@@ -4,10 +4,20 @@
 is a plain javascript program and 
 a DOM templating philosophy.
 
+```javascript
+let node = 
+    dom('#readme', [
+        ['h2', ['domorphic']],
+        ['p', [M => 'tldr;']]
+    ])();
+```
+
 ## domorphisms 
 
-The basic domorphic instance is a function `f` 
-mapping a js model object `M`
+### pureness
+
+The basic domorphic instance is a pure function `f` 
+mapping a model object `M`
 to a DOM node `N`:
 
 ```javascript
@@ -23,28 +33,40 @@ let N = f(M);
 document.body.appendChild(N);
 ```
 
-We call such functions morphisms and write
-`dom a` for the type of morphisms 
-accepting models of type `a`.
+We'll denote by `dom a` the type
+building nodes from objects of type `a`:
  
 ```javascript
 //  dom a = a -> node
 ```
 
-Any function `u : a -> b` 
-has a pull-back `U : dom b -> dom a` 
-by right composition on the model.
+### functoriality
+
+A function `u : a -> b` 
+can be precomposed on the model.
+This defines its pull-back `U : dom b -> dom a`:
 
 ```javascript
 //  u : a -> b
-let u = ({ x, y })=> 
-    ({
-        transform: `translate(${x} ${y})` 
-    });
+let u = ({x, y}) => ({transform: `translate(${x} ${y})`});
 
 //  f : dom b
 let f = dom('circle').attr(M => M);
 
+//  g : dom a
+let g = f.pull(u);
+``` 
+
+In scientific terms, the `dom` type assignment 
+is called a contravariant functor:
+
+```javascript
+//  dom.functor : ( a -> b ) -> ( dom b -> dom a )
+```
+
+And the previous is equivalent to:
+
+```javascript
 //  U : ( dom b -> dom a )
 let U = dom.functor(u);
 
@@ -56,11 +78,30 @@ document.body.appendChild(
 );
 ```
 
-The `dom` type assignment is thus a contravariant functor.
+### earthly programming
 
+In this sublunar world nothing remains pure forever. 
+
+```javascript 
+//  f : dom a
+let f = dom('svg', [
+    dom('circle.earth').attr(M => M.earth),
+    dom('circle.moon').attr(M => M.moon)
+]);
+
+//  n : dom_ a
+let n = f.node();
+
+/* * * * * * * * * /
+
+//  Model : a
+let Model = n.M();
+
+//  Node : node
+let Node = n.N();
 ```
-//  dom.functor :: ( a-> b ) -> ( dom b -> dom a )
-```
+
+
 ## Indexing functors
 
 Given a type `a`, 

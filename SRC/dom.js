@@ -12,20 +12,22 @@ dom.node = (pure) => {
         target: null
     };
 
-    let my = pure;
+    let my = pure,
+        call = pure.call;
 
-    my.show = 
+    my.call = 
         M => {
             my.update(M);
 
-            let node = pure(self.M);
+            let node = call(self.M);
 
-            __.do(
+            return __.do(
                 my.node() 
                     ? n => my.node().replaceWith(n)
                     : n => my.root().appendChild(n),
                 my.node
             )(node);
+
         };
 
     my.root = 
@@ -73,7 +75,7 @@ dom.stack = (pure) => {
 
 function dom (t, a, b) {
         
-    let {tag, attr, branch} = Parse.args(t, a, b);
+    let {tag, attr, branch, html} = Parse.args(t, a, b);
 
     let self = {
         // node construction 
@@ -83,7 +85,7 @@ function dom (t, a, b) {
         prop:       {},
         on:         {},
         branch:     branch,
-        html:       '',
+        html:       html || '',
         value:      '',
         class:      '',
         doc:        dom.document,
@@ -91,14 +93,24 @@ function dom (t, a, b) {
         model:      M => M
     };
 
-    let my = __.pipe(
+    let my = M => my.call(M);
+    
+    my.call = __.pipe(
         self.model,
-        Model,
         M => {
             let node = Node(self)(M);
 
+            let append = b => {
+                if (b._dom === 'stack')
+                    b(M).forEach(n => node.appendChild(n));
+                else if (b._dom === 'keys')
+                    __.forKeys(n => node.appendChild(n))(b(M));
+                else 
+                    node.appendChild(b(M));
+            };
+
             self.branch
-                .forEach(b => node.appendChild(b(M)));
+                .forEach(append);
 
             return node;
         }
@@ -110,7 +122,7 @@ function dom (t, a, b) {
             return my;
         };
 
-    my._dom = true;
+    my._dom = 'node'; 
 
     return __.getset(my, self);
 }
@@ -134,7 +146,8 @@ function Node (N) {
             ? setSvg(k, v, node)
             : node.setAttribute(k, v, node)
 
-    let my = 
+    let my = __.pipe(
+        Model,
         M => {
             let node = create();
 
@@ -156,6 +169,7 @@ function Node (N) {
 
             return node;
         }
+    );
 
     return my;
 }

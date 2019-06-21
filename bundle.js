@@ -171,20 +171,22 @@ dom.node = (pure) => {
         target: null
     };
 
-    let my = pure;
+    let my = pure,
+        call = pure.call;
 
-    my.show = 
+    my.call = 
         M => {
             my.update(M);
 
-            let node = pure(self.M);
+            let node = call(self.M);
 
-            __.do(
+            return __.do(
                 my.node() 
                     ? n => my.node().replaceWith(n)
                     : n => my.root().appendChild(n),
                 my.node
             )(node);
+
         };
 
     my.root = 
@@ -232,7 +234,7 @@ dom.stack = (pure) => {
 
 function dom (t, a, b) {
         
-    let {tag, attr, branch} = Parse.args(t, a, b);
+    let {tag, attr, branch, html} = Parse.args(t, a, b);
 
     let self = {
         // node construction 
@@ -242,7 +244,7 @@ function dom (t, a, b) {
         prop:       {},
         on:         {},
         branch:     branch,
-        html:       '',
+        html:       html || '',
         value:      '',
         class:      '',
         doc:        dom.document,
@@ -250,14 +252,24 @@ function dom (t, a, b) {
         model:      M => M
     };
 
-    let my = __.pipe(
+    let my = M => my.call(M);
+    
+    my.call = __.pipe(
         self.model,
-        Model,
         M => {
             let node = Node(self)(M);
 
+            let append = b => {
+                if (b._dom === 'stack')
+                    b(M).forEach(n => node.appendChild(n));
+                else if (b._dom === 'keys')
+                    __.forKeys(n => node.appendChild(n))(b(M));
+                else 
+                    node.appendChild(b(M));
+            };
+
             self.branch
-                .forEach(b => node.appendChild(b(M)));
+                .forEach(append);
 
             return node;
         }
@@ -269,7 +281,7 @@ function dom (t, a, b) {
             return my;
         };
 
-    my._dom = true;
+    my._dom = 'node'; 
 
     return __.getset(my, self);
 }
@@ -293,7 +305,8 @@ function Node (N) {
             ? setSvg(k, v, node)
             : node.setAttribute(k, v, node)
 
-    let my = 
+    let my = __.pipe(
+        Model,
         M => {
             let node = create();
 
@@ -315,6 +328,7 @@ function Node (N) {
 
             return node;
         }
+    );
 
     return my;
 }
@@ -410,14 +424,24 @@ let Model = require('./model'),
 
 let Parse = {};
 
+let isArray = Array.isArray,
+    isString = x => (typeof x === 'string'),
+    isFunc = Model.isFunction;
+
 Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
     
     (tag, a={}, b=[]) => {
 
         let isBranches = 
-            a => (Array.isArray(a) || Model.isFunction(a));
+            a => (isArray(a) || isFunc(a));
         if ( isBranches(a) )
             [a, b] = [{}, a];
+
+        let isHtml = 
+            b => isArray(b) && (isString(b[0]) || isFunc(b[0]));
+        if ( isHtml(b) ) {
+            [html, b] = [b[0], []];
+        }
 
         let {classes, tagname, id} = Parse.tag(tag);
 
@@ -427,22 +451,13 @@ Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
         if (classes.length)
             Object.assign(a, {class: classes.join(' ')});
 
-        return {tag: tagname, attr: a, branch: b};
+        return {tag: tagname, attr: a, branch: b, html};
     };
 
 
 Parse.branch = 
 
-    b => {
-        let t = x => (typeof x);
-        if (t(b) === 'string' || Mfunction(b)) 
-            return dom('text').html(b)
-        if (Array.isArray(b)) 
-            return (t(b[0]) === 'function')
-                ? b 
-                : dom(...b);
-        return b
-    };
+    b => isArray(b) ? dom(...b) : b;
 
 
 Parse.tag =             // match 'tagname#id.class.class2' 

@@ -3,14 +3,24 @@ let Model = require('./model'),
 
 let Parse = {};
 
+let isArray = Array.isArray,
+    isString = x => (typeof x === 'string'),
+    isFunc = Model.isFunction;
+
 Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
     
     (tag, a={}, b=[]) => {
 
         let isBranches = 
-            a => (Array.isArray(a) || Model.isFunction(a));
+            a => (isArray(a) || isFunc(a));
         if ( isBranches(a) )
             [a, b] = [{}, a];
+
+        let isHtml = 
+            b => isArray(b) && (isString(b[0]) || isFunc(b[0]));
+        if ( isHtml(b) ) {
+            [html, b] = [b[0], []];
+        }
 
         let {classes, tagname, id} = Parse.tag(tag);
 
@@ -20,22 +30,13 @@ Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
         if (classes.length)
             Object.assign(a, {class: classes.join(' ')});
 
-        return {tag: tagname, attr: a, branch: b};
+        return {tag: tagname, attr: a, branch: b, html};
     };
 
 
 Parse.branch = 
 
-    b => {
-        let t = x => (typeof x);
-        if (t(b) === 'string' || Mfunction(b)) 
-            return dom('text').html(b)
-        if (Array.isArray(b)) 
-            return (t(b[0]) === 'function')
-                ? b 
-                : dom(...b);
-        return b
-    };
+    b => isArray(b) ? dom(...b) : b;
 
 
 Parse.tag =             // match 'tagname#id.class.class2' 
