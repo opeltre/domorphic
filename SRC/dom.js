@@ -85,7 +85,7 @@ function dom (t, a, b) {
         prop:       {},
         on:         {},
         branch:     branch,
-        html:       html || '',
+        html:       html,
         value:      '',
         class:      '',
         doc:        dom.document,

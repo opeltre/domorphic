@@ -16,6 +16,7 @@ Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
         if ( isBranches(a) )
             [a, b] = [{}, a];
 
+        let html = ''; 
         let isHtml = 
             b => isArray(b) && (isString(b[0]) || isFunc(b[0]));
         if ( isHtml(b) ) {
