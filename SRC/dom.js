@@ -1,120 +1,28 @@
+module.exports = dom;
+
 let __ = require('./__'),
     Parse = require('./parse'),
     Model = require('./model');
 
-module.exports = dom;
+function dom (...args) {
 
-dom.node = (pure) => {
+    /*
+        Pure maps 
 
-    let self = {
-        node:   null,
-        M:      {},
-        target: null
-    };
+            dom a :: a -> node
 
-    let my = pure,
-        call = pure.call;
-
-    my.call = 
-        M => {
-            my.update(M);
-
-            let node = call(self.M);
-
-            return __.do(
-                my.node() 
-                    ? n => my.node().replaceWith(n)
-                    : n => my.root().appendChild(n),
-                my.node
-            )(node);
-
-        };
-
-    my.root = 
-        () => my.doc().querySelector(self.target)
-            || my.doc().body;
-
-    my.remove = 
-        () => {
-            my.node().remove();
-            return my.node(null);
-        }
-
-    my.update = 
-        M => {
-            my.M(
-                __.setKeys(my.model()(M))(self.M)
-            );
-
-            let recur = M => 
-                b => b.update 
-                    ? b.update(M)
-                    : b.branch().forEach(recur(b.model()(M)));
-
-            my.branch().forEach(recur(my.M()));
-
-            return my;
-        }
-
-    return __.getset(my, self);
-}
-
-dom.stack = (pure) => {
-
-    let self = {
-        nodes : [],
-        M:      [],
-        target: null
-    };
-
-}
-
-
-
-// dom a :: a -> node
-
-function dom (t, a, b) {
+            dom : s -> dom a
+    */
         
-    let {tag, attr, branch, html} = Parse.args(t, a, b);
+    let self = Parse(...args);
 
-    let self = {
-        // node construction 
-        tag:        tag,
-        svg:        tag === 'svg' || tag === 'g',
-        attr:       attr,
-        prop:       {},
-        on:         {},
-        branch:     branch,
-        html:       html,
-        value:      '',
-        class:      '',
-        doc:        dom.document,
-        // model pull-back
-        model:      M => M
-    };
-
-    let my = M => my.call(M);
+    let my = 
+        M => my.eff(Model.copy(M))
+            .refresh({}, dom.fragment())
+            .N();
     
-    my.call = __.pipe(
-        self.model,
-        M => {
-            let node = Node(self)(M);
-
-            let append = b => {
-                if (b._dom === 'stack')
-                    b(M).forEach(n => node.appendChild(n));
-                else if (b._dom === 'keys')
-                    __.forKeys(n => node.appendChild(n))(b(M));
-                else 
-                    node.appendChild(b(M));
-            };
-
-            self.branch
-                .forEach(append);
-
-            return node;
-        }
-    );
+    my.eff = 
+        (M, N) => dom.eff(my, M, N);
 
     my.append = 
         (...bs) => {
@@ -124,8 +32,79 @@ function dom (t, a, b) {
 
     my._dom = 'node'; 
 
+    my.self = self;
+
     return __.getset(my, self);
 }
+
+
+dom.eff = function (f, M={}, N) {
+
+    /*
+        Effectful nodes  
+
+            eff (dom a) :: da -> eff (dom a)
+
+            eff (dom a) :: {
+                f: dom a,
+                M: a
+                N: node
+            }
+    */
+
+    let self = {f, M, N, branch: []};
+
+    let my = 
+        (dM, dN=true) => dN 
+            ? my.refresh(dM) 
+            : my.update(dM);
+
+    my.refresh = 
+        (dM, root=false) => {
+
+            my.update(dM, false);
+            
+            let node = Node(f.self)(M);
+
+            (root || dom.fragment())
+                .appendChild(node);
+
+            let B = Model(self.M)(f.branch())
+                .map(b => dom.eff(b))
+                .map(b => b.refresh(M, node));
+            my.branch(B);
+
+            let N = my.node();
+            if (!root && N) 
+                N.replaceWith(node);
+            else if (!root && !N)
+                Model(self.M)(f.root()).appendChild(node);
+            my.node(N);
+
+            return my;
+        }
+
+    my.update = 
+        (dM, _r=true) => {
+
+            self.M = __.setKeys(self.M, f.model(dM));
+            if (_r)
+                self.branch.forEach(
+                    b => b.update(self.M)
+                );
+            return my;
+        };
+
+    my.remove = 
+        () => {
+            self.N.remove();
+            self.N = null;
+            return my;
+        };
+
+    return __.getset(my, self);
+}
+
 
 
 
@@ -163,9 +142,9 @@ function Node (N) {
                 (v, k) => node.addEventListener(k, v)
             )(M.mapEvents(N.on));
 
-            node.innerHTML = M(N.html);
+            N.html && (node.innerHTML = M(N.html));
 
-            node.value = M(N.value);
+            N.value && (node.value = M(N.value));
 
             return node;
         }
@@ -177,8 +156,15 @@ function Node (N) {
 
 /*************     dom     ***************/
 
+dom.fragment = 
+    () => dom.document.createDocumentFragment();
+
 dom.document = (typeof document === 'undefined') 
-    ? {dispatchEvent: __.null, addEventListener: __.null}
+    ? {
+        dispatchEvent: __.null, 
+        addEventListener: __.null,
+        createDocumentFragment: () => ({appendChild: __.null})
+    }
     : document;
 /*
 dom.document.addEventListener(

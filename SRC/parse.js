@@ -1,37 +1,61 @@
 let Model = require('./model'),
     dom = require('./dom');
 
-let Parse = {};
-
 let isArray = Array.isArray,
     isString = x => (typeof x === 'string'),
     isFunc = Model.isFunction;
 
+let Parse = 
+    (t, a, b, s) => isString(t) 
+        ? Parse.self(t,a,b,s)
+        : Parse.self('',{},[],t);
+
+
+Parse.self = 
+    (t, a, b, s) => Object.assign(
+        Parse.args(t, a, b),
+        {
+            prop:       {},
+            on:         {},
+            value:      '',
+            class:      '',
+            doc:        dom.document,
+            model:      M => M
+        },
+        s || {}
+    );
+
+
+//  {tag, attr, branch, html} = Parse.args(t, a, b)
+
 Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
     
-    (tag, a={}, b=[]) => {
+    (tag='div', A={}, B=[]) => {
 
         let isBranches = 
-            a => (isArray(a) || isFunc(a));
-        if ( isBranches(a) )
-            [a, b] = [{}, a];
+            A => (isArray(A) || isFunc(A));
+        if ( isBranches(A) )
+            [A, B] = [{}, A];
 
         let html = ''; 
         let isHtml = 
-            b => isArray(b) && (isString(b[0]) || isFunc(b[0]));
-        if ( isHtml(b) ) {
-            [html, b] = [b[0], []];
+            B => isArray(B) && (isString(B[0]) || isFunc(B[0]));
+        if ( isHtml(B) ) {
+            [html, B] = [B[0], []];
         }
+        B = B.map(Parse.branch);
 
-        let {classes, tagname, id} = Parse.tag(tag);
+        let {classes, tagname, id} = Parse.tag(tag || '');
+
+        let svg = tagname === 'svg' || tagname === 'g';
 
         if (id) 
-            Object.assign(a, {id});
+            Object.assign(A, {id});
 
         if (classes.length)
-            Object.assign(a, {class: classes.join(' ')});
+            Object.assign(A, {class: classes.join(' ')});
 
-        return {tag: tagname, attr: a, branch: b, html};
+        return {tag: tagname, attr: A, branch: B, html, svg};
     };
 
 

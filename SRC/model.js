@@ -48,5 +48,7 @@ function Model (M) {
 
 Model.isFunction = isMfunction;
 
+Model.copy = __.pipe(JSON.stringify, JSON.parse);
+
 module.exports = Model;
 
