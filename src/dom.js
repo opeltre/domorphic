@@ -87,7 +87,7 @@ dom.eff = function (f, M={}, N) {
     my.update = 
         (dM, _r=true) => {
 
-            self.M = __.setKeys(self.M, f.model(dM));
+            self.M = __.setKeys(f.model(dM))(self.M);
             if (_r)
                 self.branch.forEach(
                     b => b.update(self.M)
