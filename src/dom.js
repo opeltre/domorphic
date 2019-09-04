@@ -1,6 +1,6 @@
 module.exports = dom;
 
-let __ = require('./__'),
+let __ = require('@opeltre/math'),
     Parse = require('./parse'),
     Model = require('./model');
 
