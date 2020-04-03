@@ -1,7 +1,11 @@
 /*** __ ***/
 
-let __ = {};
+let __ = 
+    f => xs => f(...xs);
 
+//////
+module.exports = __;
+//////
 
 __.null = 
     () => {};
@@ -13,11 +17,7 @@ __.return =
     x => () => x;
 
 __.val = 
-    (f, x) => typeof f === 'function' ? f(x) : f;
-
-__.X = 
-    f => 
-        X => f(...X);
+    (f, x) => (!typeof x === 'undefined') ? f(x) : f;
 
 __.$ = 
     (...xs) => 
@@ -47,10 +47,16 @@ __.logs =
     str => 
         x => {__.log(str || 'logs:'); return  __.log(x)};
 
+__.map = 
+    (...fs) => 
+        arr => Array.isArray(arr)
+            ? arr.map(__.pipe(...fs))
+            : __.pipe(...fs)(arr);
+            
 __.forKeys = 
     (...fs) => 
         obj => Object.keys(obj).forEach(
-            k => __.pipe(...fs)(k, obj[k])
+            k => __.pipe(...fs)(obj[k], k)
         );
 
 __.mapKeys = 
@@ -98,7 +104,7 @@ __.toPairs =
     obj => {
         let out = [];
         __.forKeys(
-            (v,k) => out.push([v,k])
+            (v, k) => out.push([v, k])
         );
         return out;
     };
@@ -112,13 +118,8 @@ __.sleep =
     ms => new Promise(then => setTimeout(then, ms));
 
 __.range =
-    n => {
-        let out = [];
-        for (var i=0; i<n; i++) {
-            out.push(i);
-        }
-        return out;
-    }
+    n => [...Array(n).keys()];
+
 
 /* getset */
 
@@ -131,7 +132,7 @@ function getset (my, attrs={}) {
             return my;
         };
     __.forKeys(
-        key => my[key] = method(key)
+        (v, k) => my[k] = method(k)
     )(attrs);
     return my;
 }
@@ -148,7 +149,7 @@ function getsetArray (my, attrs={}) {
             return my;
         };
     __.forKeys(
-        key => my[key] = method(key)
+        (v, k) => my[k] = method(k)
     )(attrs);
     return my;
 }

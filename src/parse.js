@@ -1,4 +1,5 @@
 let Model = require('./model'),
+    __ = require('./__'),
     dom = require('./dom');
 
 let Parse = {};
@@ -9,8 +10,10 @@ Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
 
         let isBranches = 
             a => (Array.isArray(a) || Model.isFunction(a));
-        if ( isBranches(a) )
+        if (isBranches(a))
             [a, b] = [{}, a];
+        
+        b = b.map(Parse.branch);
 
         let {classes, tagname, id} = Parse.tag(tag);
 
@@ -28,7 +31,7 @@ Parse.branch =
 
     b => {
         let t = x => (typeof x);
-        if (t(b) === 'string' || Mfunction(b)) 
+        if (t(b) === 'string' || Model.isFunction(b)) 
             return dom('text').html(b)
         if (Array.isArray(b)) 
             return (t(b[0]) === 'function')

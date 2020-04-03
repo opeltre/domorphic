@@ -1,34 +1,13 @@
-/*** fst_helpers ***/
+let dom = require('./dom');
 
-fst.input = 
-    (id, key=id, css='') => {
-        let data = 
-            val => { let d = {}; d[key] = val; return d };
-        return fst('input#' + id + css)
-            .html(M => M[key])
-            .on('input', 
-                fst.emit('-> '+ id, t => data(t.value))
+
+dom.range = 
+    (min, max, step, value) => 
+        dom('input', {type: 'range', min, max, step: step || 0.1})
+            .value(
+                typeof value === 'undefined' 
+                    ? (max - min) / 2 
+                    : value
             )
-    }
 
-fst.textarea = 
-    (id, key=id, css='') => {
-        let data = 
-            val => { let d = {}; d[key] = val; return d };
-        return fst('textarea#'+ id + '-' + key + css)
-            .value(M => M[key])
-            .on('change', 
-                fst.emit('-> ' + id, t => data(t.value)))
-    }
-
-fst.table = 
-    body => 
-        fst('table', [
-            ['tbody', 
-                body
-                    .map(row => row
-                        .map(cell => ['td', [cell]])
-                    )
-                    .map(row => ['tr', row])
-            ]
-        ]);
+module.exports = dom;

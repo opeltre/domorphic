@@ -1,1 +1,1 @@
-browserify -e SRC/dom.js -s bundle -o ./bundle.js
+browserify -e index.js -s dom -o ./bundle.js
