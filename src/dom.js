@@ -4,8 +4,9 @@ let __ = require('./__'),
     Parse = require('./parse'),
     Model = require('./model');
 
-// dom a :: a -> node
+dom.__ = __;
 
+// dom a :: a -> node
 function dom (t, a, b) {
         
     let {tag, attr, branch, html} = Parse.args(t, a, b);
@@ -57,7 +58,9 @@ function dom (t, a, b) {
 
 
 dom.select = 
-    str => document.querySelector(str);
+    str => typeof str === 'string' 
+        ? document.querySelector(str)
+        : str;
 
 dom.append = 
     (str, node) => dom.select(str).appendChild(node());
@@ -68,6 +71,24 @@ dom.replace =
 dom.remove = 
     (str) => dom.select(str).remove();
 
+dom.set = 
+    (str, attrs) => {
+        let N = dom.select(str), 
+            setAttr = N instanceof SVGElement 
+                ? (v, k) => N.setAttributeNS(null, k, v)
+                : (v, k) => N.setAttribute(k, v);
+        __.forKeys(setAttr)(attrs);
+    }
+
+dom.loop = 
+    (dt, tick) => 
+        t => Promise.resolve(t)
+            .then(tick)
+            .then(() => __.sleep(dt))
+            .then(() => t + dt)
+            .then(dom.loop(dt, tick))
+            
+        
 
 // node a :: a -> singleNode
 
