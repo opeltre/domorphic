@@ -116,9 +116,8 @@ tree.link =
         n, 
         __.map(
             ([ni, bi]) => [f(n, ni), __.map(tree.link(f))(bi)]
-        )(b)
-    ];
 
+    ];
 
 //  .build : (n -> n') -> (n' -> n' -> eff(n')) -> tree(m, n) -> n'
 tree.build = 

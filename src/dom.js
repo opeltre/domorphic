@@ -1,10 +1,9 @@
 module.exports = dom;
 
-let __ = require('./__'),
+let __ = require('lolo'),
     Parse = require('./parse'),
     Model = require('./model');
 
-dom.__ = __;
 
 // dom a :: a -> node
 function dom (t, a, b) {
@@ -12,18 +11,19 @@ function dom (t, a, b) {
     let {tag, attr, branch, html} = Parse.args(t, a, b);
 
     let self = {
-        // node construction 
+        // node 
         tag:        tag,
         svg:        tag === 'svg' || tag === 'g',
         attr:       attr,
         prop:       {},
         on:         {},
-        branch:     branch,
         html:       html || '',
         value:      '',
         class:      '',
         doc:        dom.document,
-        // model pull-back
+        // branches
+        branch:     branch,
+        // pull-back
         model:      M => M
     };
 
@@ -55,7 +55,7 @@ function dom (t, a, b) {
 
     return __.getset(my, self);
 }
-
+            
 
 dom.select = 
     str => typeof str === 'string' 
@@ -87,79 +87,3 @@ dom.loop =
             .then(() => __.sleep(dt))
             .then(() => t + dt)
             .then(dom.loop(dt, tick))
-            
-        
-
-// node a :: a -> singleNode
-
-function Node (N) { 
-
-    let parentNode = null;
-
-    let create = 
-        () => N.svg
-            ? createSvg(N.doc, N.tag)
-            : N.doc.createElement(N.tag)
-
-    let setAttribute = 
-        (k, v, node) => N.svg
-            ? setSvg(k, v, node)
-            : node.setAttribute(k, v, node)
-
-    let my = 
-        M => {
-            let node = create();
-
-            __.forKeys(
-                (v, k) => setAttribute(k, v, node)
-            )(M.mapKeys(N.attr));
-
-            __.forKeys(
-                (v, k) => node[k] = v
-            )(M.mapKeys(N.prop));
-
-            __.forKeys(
-                (v, k) => node.addEventListener(k, v)
-            )(M.mapEvents(N.on));
-
-            node.innerHTML = M(N.html);
-
-            node.value = M(N.value);
-
-            return node;
-        }
-
-    return my;
-}
-
-
-
-/*************     dom     ***************/
-
-dom.document = (typeof document === 'undefined') 
-    ? {dispatchEvent: __.null, addEventListener: __.null}
-    : document;
-/*
-dom.document.addEventListener(
-    'DOMContentLoaded', 
-    dom.emit('dom')
-);
-*/
-
-/*************      svg      *************/
-
-function setSvg (key, val, node) {
-    node.setAttributeNS(null, key, val);
-}
-
-function createSvg (doc, tag) {
-    let svgNS = "http://www.w3.org/2000/svg",
-        node = doc.createElementNS(svgNS, tag);
-    if (tag === 'svg')
-        node.setAttributeNS(
-            "http://www.w3.org/2000/xmlns/", 
-            "xmlns:xlink", 
-            "http://www.w3.org/1999/xlink"
-        );
-    return node;
-}
