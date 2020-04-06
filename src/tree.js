@@ -11,18 +11,29 @@ let __ = require('./__');
         m -> n, 
         m -> [tree(m, n)] 
     )
+
 */
-let isFunction = 
-    tn => typeof tn === 'function'
 
-let toFunction = 
-    tn => isFunction(tn) ? tn : () => tn;
+//  .eval : m -> tree(m, n) -> tree(n)
+tree.eval = 
+    M => ([tn, tb]) => [
+        tn(M),
+        __.map(tree.eval(M))(tb(M))
+    ];
 
-let tree = 
-    ([tn, tb]) => [
-        toFunction(tn), 
-        __.pipe(toFunction(tb), __.map(tree))
-    ]
+//  .apply : tree(m, n) -> m -> tree(n)
+tree.apply = 
+    t => M => tree.eval(M)(t);
+
+//  .develop : (m -> tree(n)) -> tree(m, n)
+tree.develop = 
+    t => [
+        M => t(M)[0],
+        M => __.map(tree.develop)(t(M)[1])
+    ];
+
+
+//------ Functors ------
 
 //  .fmap : (n -> n') -> tree(m, n) -> tree(m, n')
 tree.fmap = 
@@ -38,15 +49,11 @@ tree.cofmap =
         __.pipe(g, tb, __.map(tree.cofmap(g)))
     ];
 
-//  .eval : m -> tree(m, n) -> tree(n)
-tree.eval = 
-    M => ([tn, tb]) => [
-        tn(M),
-        __.map(tree.eval(M))(tb(M))
-    ];
 
-//  .return : n -> tree(m, n)
-tree.return = 
+//------ Monad ------
+
+//  .unit : n -> tree(m, n)
+tree.unit = 
     N => [
         () => N,
         () => []
@@ -61,5 +68,67 @@ tree.compose =
             ...ttb(M).map(tree.compose)
         ]
     ];
+
+
+//------ Construction ------
+/*  
+    m ?-> n :: n || m -> n
+
+    tree(m ? n) :: (
+        m ?-> n,
+        m ?-> tree(m ? n)
+    )
+        
+*/
+
+//  .depend : ((m ?-> n) -> (m -> n)) -> tree(m ? n) -> tree(m, n)
+tree.depend = 
+
+    isFunction => {
+
+        //  (m ?-> n) -> bool
+        let isF = isFunction || (tn => typeof tn === 'function');
+
+        //  (m ?-> n) -> (m -> n)
+        let toF = tn => isF(tn) ? tn : () => tn;
+
+        //  tree(m ? n) -> tree(m, n)
+        return ([tn, tb]) => [
+            toF(tn), 
+            __.pipe(toF(tb), __.map(tree.depend(isF)))
+        ]
+    };
+
+
+//  tree(m ? n) -> tree(m, n)
+function tree (t, isF) { 
+
+    return tree.depend(isF)(t);
+
+}
+
+
+//------ Links ------
+
+//  .link : (n -> n -> n) -> tree(n) -> tree(n)
+tree.link = 
+    f => ([n, b]) => [
+        n, 
+        __.map(
+            ([ni, bi]) => [f(n, ni), __.map(tree.link(f))(bi)]
+        )(b)
+    ];
+
+
+//  .build : (n -> n') -> (n' -> n' -> eff(n')) -> tree(m, n) -> n'
+tree.build = 
+    (node, branch) => ([tn, tb]) => M => {
+        let n = node(tn(M)),
+            b = tb(M);
+        b.forEach(
+            ni => branch(n, tree.build(node, branch)(ni)(M))
+        );
+        return n;
+    };
 
 module.exports = tree;
