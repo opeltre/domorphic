@@ -1,7 +1,9 @@
-let __ = require('./__');
+let __ = require('lolo');
 
 /*------ tree type ------ 
  
+    N.B. This file should be moved to the `__` package. 
+
     tree(n) :: (
         n,
         [tree(n)]
@@ -11,6 +13,16 @@ let __ = require('./__');
         m -> n, 
         m -> [tree(m, n)] 
     )
+
+    More generally, we should view tree(m, n) as a type class: 
+
+    t(m, n) instance tree(m, n) where: 
+
+        t :         (m -> n) -> (m -> [t(m, n)]) -> t(m, n)
+        
+        t.node :    t(m, n) -> m -> n
+
+        t.branch :  t(m, n) -> m -> [t(m, n)]
 
 */
 
@@ -119,13 +131,12 @@ tree.link =
         )(b)
     ];
 
-//  .build : (n -> n') -> (n' -> n' -> eff(n')) -> tree(m, n) -> n'
+//  .build : (n -> n') -> (n' -> n' -> eff(n')) -> tree(n) -> n'
 tree.build = 
-    (node, branch) => ([tn, tb]) => M => {
-        let n = node(tn(M)),
-            b = tb(M);
-        b.forEach(
-            ni => branch(n, tree.build(node, branch)(ni)(M))
+    (node, branch) => ([tn, tb]) => {
+        let n = node(tn);
+        tb.forEach(
+            ni => branch(n, tree.build(node, branch)(ni))
         );
         return n;
     };

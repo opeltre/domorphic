@@ -1,3 +1,5 @@
-let dom_elements = require('./src/elements');
+let dom = require('./src/dom'),
+    elements = require('./src/elements'),
+    effects = require('./src/effects');
 
-module.exports = dom_elements;
+module.exports = Object.assign(dom, elements, effects);

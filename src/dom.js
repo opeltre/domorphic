@@ -1,14 +1,16 @@
 module.exports = dom;
 
 let __ = require('lolo'),
-    Parse = require('./parse'),
-    Model = require('./model');
+    parse = require('./parse'),
+    data = require('./data'),
+    node = require('./node');
 
+let _r = __.record();
 
 // dom a :: a -> node
 function dom (t, a, b) {
         
-    let {tag, attr, branch, html} = Parse.args(t, a, b);
+    let {tag, attr, branch, html} = parse.args(t, a, b);
 
     let self = {
         // node 
@@ -28,22 +30,10 @@ function dom (t, a, b) {
     };
 
     let my = 
-        M => {
-            let $M = Model(self.model(M));
-            return my.DOM.branch($M, my.DOM.node($M));
-        }
+        M => __(data.build(my.data()), node.build)(M);
 
-    my.DOM = {};
-
-    my.DOM.node =   
-        $M => Node(self)($M);
-
-    my.DOM.branch = 
-        ($M, node) => {
-            $M(self.branch)
-                .forEach(b => node.appendChild(b.DOM.node($M)));
-            return node;
-        }
+    my.data = 
+        () => self;
 
     my.append = 
         (...bs) => {
@@ -51,39 +41,18 @@ function dom (t, a, b) {
             return my;
         };
 
-    my._dom = true;
+    my._domInstance = true;
 
     return __.getset(my, self);
 }
-            
 
-dom.select = 
-    str => typeof str === 'string' 
-        ? document.querySelector(str)
-        : str;
-
-dom.append = 
-    (str, node) => dom.select(str).appendChild(node());
-
-dom.replace = 
-    (str, node) => dom.select(str).replaceWith(node());
-
-dom.remove = 
-    (str) => dom.select(str).remove();
-
-dom.set = 
-    (str, attrs) => {
-        let N = dom.select(str), 
-            setAttr = N instanceof SVGElement 
-                ? (v, k) => N.setAttributeNS(null, k, v)
-                : (v, k) => N.setAttribute(k, v);
-        __.forKeys(setAttr)(attrs);
-    }
-
-dom.loop = 
-    (dt, tick) => 
-        t => Promise.resolve(t)
-            .then(tick)
-            .then(() => __.sleep(dt))
-            .then(() => t + dt)
-            .then(dom.loop(dt, tick))
+dom.document = (typeof window !== 'undefined')
+    ? window.document
+    : ({
+        createElement : 
+            tag => {
+                let my = {tag, branch: []};
+                my.appendChild = elem => my.branch.push(elem);
+                return my;
+            }
+    })

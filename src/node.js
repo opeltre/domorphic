@@ -1,3 +1,7 @@
+let __ = require('lolo'),
+    tree = require('./tree'),
+    _r = __.record();
+
 //------ DOM Node ------
 
 let node = {}; 
@@ -26,7 +30,7 @@ node.unit = D => {
 
     N.value = D.value;
 
-    return node;
+    return N;
 }
 
 //  .link : (node, node) -> node
@@ -36,6 +40,13 @@ node.link =
         return Ni;
     }
 
+
+//  .build : tree(data) -> node
+node.build = 
+    tree.build(
+        node.unit,
+        node.link
+    );
 
 //------ SVG ------
 
@@ -49,4 +60,4 @@ function SVG (node) {
 
 SVG.NS = "http://www.w3.org/2000/svg";
 
-module.exports = {node, data};
+module.exports = node;

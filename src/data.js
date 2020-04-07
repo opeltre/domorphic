@@ -119,3 +119,6 @@ data.linkSvg =
 //  .linkDoc : (data, data) -> data
 data.linkDoc = 
     (D, Di) => _r.set({doc: D.doc})(Di);
+
+
+module.exports = data;
