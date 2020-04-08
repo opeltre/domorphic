@@ -1,6 +1,6 @@
 let __ = require('lolo');
 
-/*------ tree type ------ 
+/*------ Function Trees ------ 
  
     N.B. This file should be moved to the `__` package. 
 
@@ -18,127 +18,131 @@ let __ = require('lolo');
 
     t(m, n) instance tree(m, n) where: 
 
-        t :         (m -> n) -> (m -> [t(m, n)]) -> t(m, n)
+        t.create :  (m -> n) -> (m -> [t(m, n)]) -> t(m, n)
         
         t.node :    t(m, n) -> m -> n
 
         t.branch :  t(m, n) -> m -> [t(m, n)]
-
 */
 
-//  .eval : m -> tree(m, n) -> tree(n)
-tree.eval = 
-    M => ([tn, tb]) => [
-        tn(M),
-        __.map(tree.eval(M))(tb(M))
-    ];
+function Tree (type={}) {
 
-//  .apply : tree(m, n) -> m -> tree(n)
-tree.apply = 
-    t => M => tree.eval(M)(t);
+    let T   = type.create    || ((n, b) => [n, b]),
+        _n  = type.node      || (t => t[0]),
+        _b  = type.branch    || (t => t[1]);
+  
+    let tree = (n, b) => T(n, b);
+    tree.node = _n;
+    tree.branch = _b;
 
-//  .develop : (m -> tree(n)) -> tree(m, n)
-tree.develop = 
-    t => [
-        M => t(M)[0],
-        M => __.map(tree.develop)(t(M)[1])
-    ];
+    //  .eval : m -> tree(m, n) -> tree(n)
+    tree.eval = 
+        M => t => tree.apply(t)(M);
 
 
-//------ Functors ------
+    //------ Functors ------
 
-//  .fmap : (n -> n') -> tree(m, n) -> tree(m, n')
-tree.fmap = 
-    f => ([tn, tb]) => [ 
-        __.pipe(tn, f),
-        __.pipe(tb, __.map(tree.fmap(f)))  
-    ];
+    //  .map : (n -> n') -> tree(n) -> tree(n')
+    tree.map = 
+        f => t => T(
+            f(_n(t)),
+            _b(t).map(tree.map(f))
+        );
 
-//  .cofmap : (m -> m') -> tree(m', n) -> tree(m, n)
-tree.cofmap = 
-    g => ([tn, tb]) => [
-        __.pipe(g, tn),
-        __.pipe(g, tb, __.map(tree.cofmap(g)))
-    ];
+    //  .fmap : (n -> n') -> tree(m, n) -> tree(m, n')
+    tree.fmap = 
+        f => t => T( 
+            __(_n(t), f),
+            __(_b(t), __.map(tree.fmap(f)))  
+        );
 
-
-//------ Monad ------
-
-//  .unit : n -> tree(m, n)
-tree.unit = 
-    N => [
-        () => N,
-        () => []
-    ];
-
-//  .compose : tree(m, tree(m, n)) -> tree(m, n)
-tree.compose = 
-    ([ttn, ttb]) => [
-        M => ttn(M)[0],
-        M => [
-            ...ttn(M)[1], 
-            ...ttb(M).map(tree.compose)
-        ]
-    ];
+    //  .cofmap : (m -> m') -> tree(m', n) -> tree(m, n)
+    tree.cofmap = 
+        g => t => T(
+            __(g, _n(t)),
+            __(g, _b(t), __.map(tree.cofmap(g)))
+        )
 
 
-//------ Construction ------
-/*  
-    m ?-> n :: n || m -> n
+    //------ Natural Transformations ------
 
-    tree(m ? n) :: (
-        m ?-> n,
-        m ?-> tree(m ? n)
-    )
-        
-*/
+    //  .apply : tree(m, n) -> m -> tree(n)
+    tree.apply = 
+        t => M => T(
+            __(_n(t))(M),
+            __(_b(t))(M).map(ti => tree.apply(ti)(M))
+        );
 
-//  .depend : ((m ?-> n) -> (m -> n)) -> tree(m ? n) -> tree(m, n)
-tree.depend = 
+    //  .nat ( tree' ) : tree(n) -> tree'(n) 
+    tree.nat = 
+        S => t => S(
+            _n(t),
+            _b(t).map(tree.nat(S))
+        )
 
-    isFunction => {
+    //  .fnat ( tree' ) : tree(m, n) -> tree'(m, n)
+    tree.fnat = 
+        S => t => S(
+            _n(t),
+            __(_b(t), __.map(tree.nat(S)))
+        );
 
-        //  (m ?-> n) -> bool
-        let isF = isFunction || (tn => typeof tn === 'function');
+    //  .develop : (m -> tree(n)) -> tree(m, n)
+    tree.develop = 
+        t => T( 
+            M => _n(t(M)),
+            M => __.map(tree.develop)(_b(t(M)))
+        );
+
+
+    //------ Monad ------
+
+    //  .unit : n -> tree(m, n)
+    tree.unit = 
+        N => T(
+            () => N,
+            () => []
+        );
+
+    //  .compose : tree(m, tree(m, n)) -> tree(m, n)
+    tree.compose = 
+        tt => T(
+            __(_n(tt), _n),
+            M => [
+                ...__(_n(tt), _b)(M),
+                ...__(_b(tt), __.map(tree.compose))(M)
+            ]
+        );
+
+
+    /*------ Cast to Dependent Tree ------
+      
+        m ?-> n :: n || m -> n
+
+        tree(m ? n) :: (
+            m ?-> n,
+            m ?-> tree(m ? n)
+        )
+            
+    */
+    //  .depend : ((m ?-> n) -> (m -> n)) -> tree(m ? n) -> tree(m, n)
+    tree.depend = toFunction => {
 
         //  (m ?-> n) -> (m -> n)
-        let toF = tn => isF(tn) ? tn : () => tn;
+        let toF = toFunction || __; 
 
         //  tree(m ? n) -> tree(m, n)
-        return ([tn, tb]) => [
-            toF(tn), 
-            __.pipe(toF(tb), __.map(tree.depend(isF)))
-        ]
+        return t => T(
+            __(_n, toF)(t),
+            __(toF(_b(t)), __.map(tree.depend(toF)))
+        )
     };
 
 
-//  tree(m ? n) -> tree(m, n)
-function tree (t, isF) { 
-
-    return tree.depend(isF)(t);
-
+    return tree;
 }
 
-
-//------ Links ------
-
-//  .link : (n -> n -> n) -> tree(n) -> tree(n)
-tree.link = 
-    f => ([n, b]) => [
-        n, 
-        __.map(
-            ([ni, bi]) => [f(n, ni), __.map(tree.link(f))(bi)]
-        )(b)
-    ];
-
-//  .build : (n -> n') -> (n' -> n' -> eff(n')) -> tree(n) -> n'
-tree.build = 
-    (node, branch) => ([tn, tb]) => {
-        let n = node(tn);
-        tb.forEach(
-            ni => branch(n, tree.build(node, branch)(ni))
-        );
-        return n;
-    };
+let tree = Tree(); 
+tree.new = Tree;
 
 module.exports = tree;
