@@ -1419,15 +1419,22 @@ dom.tree = t => {
 
     //  branch : m -> [tree(m, data)]
     let branch = M => {
-        let b = __(t.branch())(M);
+        let b = t.branch();
         if (b._mapInstance)
             return b.trees(M);
         else
-            return __.map(dom.tree)(b);
+            return __(b, __.map(dom.tree))(M);
     };
                 
     return pullback([node, branch]);
 }
+
+// .toNode : tree(data) -> node
+dom.toNode = __(
+    tree.nat(data.link),
+    tree.map(node.unit),
+    tree.nat(node.link)
+);
 
 
 //------ dom(m) :: m -> node ------
@@ -1457,10 +1464,8 @@ function dom (t, a, b) {
     //  my : m -> node
     let my = 
         (M={}) => __(
-            tree.apply(dom.tree(my)),   // tree(data)
-            tree.nat(data.link),        // tree(data) -> tree(data)
-            tree.map(node.unit),        // tree(data) -> tree(node)
-            tree.nat(node.link)         // tree(node) -> node
+            tree.apply(dom.tree(my)),
+            dom.toNode,
         )(M);
 
     //.tree : m -> tree(data)
@@ -1493,6 +1498,12 @@ dom.map = function (node) {
         node :  node,
         model : M => M
     };
+
+    let my = 
+        (M={}) => __(
+            __.map(tree.apply)(my.trees()),
+            __.map(dom.toNode)
+        );
     
     //.trees : m -> [tree(m, data)]
     my.trees = 
@@ -1500,7 +1511,7 @@ dom.map = function (node) {
             let t = dom.tree(self.node);
             return __.map(
                 mi => tree.cofmap(__(mi))(t)
-            )(self.model(M));
+            )(self.model(__.log(M)));
         };
 
     my._mapInstance = true; 
