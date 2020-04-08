@@ -57,7 +57,6 @@ data.maps = {
 //  .apply : data(m) -> m -> data
 data.apply = 
     D => __(
-        _r.without('branch'),
         _r.map(
 //          (m ?-> d(m)) -> m -> m ?-> d 
             (Dk, k) => __(Dk, data.maps[data.types[k]]),
@@ -68,57 +67,33 @@ data.apply =
     )(D);
 
 
-/*------ Tree Construction ------
-    
-    The `data(m)` type generates trees through the `branch` attribute:
-
-        .branch : m ?-> [data(m)] 
-
-    The `model` attribute is used for pull-backs along the tree:
-
-        .model : m -> m' 
-        tree.cofmap(model) : tree(m', n) -> tree(m, n)
-
-    The purpose of this module is to expose: 
-
-        data.build : data(m) -> m -> tree(data)
-*/
-
-data.node = 
-    _r.without('branch', 'model');
-
-//  .tree : data(m) -> tree(m, data)
-data.tree = 
-    D => tree.cofmap(D.model || __.id)(
-        [
-            __(data.node, data.apply)(D),
-            __(D.branch, __.map(data.tree))
-        ]
-    );
-
-//  .build : data(m) -> m -> tree(data)
-data.build = 
-    D => __(
-        data.tree, 
-        tree.apply,
-        __.push(
-            tree.link(data.linkDoc),
-            tree.link(data.linkSvg)
-        )
-    )(D);
-
-
 //------ Propagated Attributes ------
 
-//  .linkSvg : (data, data) -> data
-data.linkSvg = 
-    (D, Di) => D.tag === 'svg' || D.tag === 'g'
+//          : data -> data -> data
+let linkSvg = 
+    D => Di => D.tag === 'svg' || D.tag === 'g'
         ? _r.set({svg: true})(Di)
         : Di;
 
-//  .linkDoc : (data, data) -> data
-data.linkDoc = 
-    (D, Di) => _r.set({doc: D.doc})(Di);
+//          : data -> data -> data
+let linkDoc = 
+    D => Di => _r.set({doc: D.doc})(Di);
 
+//       : data -> data -> data
+let link = 
+    l => [linkSvg, linkDoc]
+        .map(f => f(l))
+        .reduce((f, g) => __(f, g));
+
+//  .link : data -> [tree(data)] -> tree(data)
+data.link = 
+    (n, b) => [
+        n, 
+        b.map(([ni, bi]) => [link(n)(ni), bi])
+    ]
+
+//  .tree : tree(data) -> tree(data)
+data.tree = 
+    tree.nat(data.link);
 
 module.exports = data;

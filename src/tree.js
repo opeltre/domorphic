@@ -18,7 +18,7 @@ let __ = require('lolo');
 
     t(m, n) instance tree(m, n) where: 
 
-        t.create :  (m -> n) -> (m -> [t(m, n)]) -> t(m, n)
+        t.link :    (m -> n) -> (m -> [t(m, n)]) -> t(m, n)
         
         t.node :    t(m, n) -> m -> n
 
@@ -27,7 +27,7 @@ let __ = require('lolo');
 
 function Tree (type={}) {
 
-    let T   = type.create    || ((n, b) => [n, b]),
+    let T   = type.link      || ((n, b) => [n, b]),
         _n  = type.node      || (t => t[0]),
         _b  = type.branch    || (t => t[1]);
   

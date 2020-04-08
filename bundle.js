@@ -1352,7 +1352,6 @@ data.maps = {
 //  .apply : data(m) -> m -> data
 data.apply = 
     D => __(
-        _r.without('branch'),
         _r.map(
 //          (m ?-> d(m)) -> m -> m ?-> d 
             (Dk, k) => __(Dk, data.maps[data.types[k]]),
@@ -1363,58 +1362,34 @@ data.apply =
     )(D);
 
 
-/*------ Tree Construction ------
-    
-    The `data(m)` type generates trees through the `branch` attribute:
-
-        .branch : m ?-> [data(m)] 
-
-    The `model` attribute is used for pull-backs along the tree:
-
-        .model : m -> m' 
-        tree.cofmap(model) : tree(m', n) -> tree(m, n)
-
-    The purpose of this module is to expose: 
-
-        data.build : data(m) -> m -> tree(data)
-*/
-
-data.node = 
-    _r.without('branch', 'model');
-
-//  .tree : data(m) -> tree(m, data)
-data.tree = 
-    D => tree.cofmap(D.model || __.id)(
-        [
-            __(data.node, data.apply)(D),
-            __(D.branch, __.map(data.tree))
-        ]
-    );
-
-//  .build : data(m) -> m -> tree(data)
-data.build = 
-    D => __(
-        data.tree, 
-        tree.apply,
-        __.push(
-            tree.link(data.linkDoc),
-            tree.link(data.linkSvg)
-        )
-    )(D);
-
-
 //------ Propagated Attributes ------
 
-//  .linkSvg : (data, data) -> data
-data.linkSvg = 
-    (D, Di) => D.tag === 'svg' || D.tag === 'g'
+//          : data -> data -> data
+let linkSvg = 
+    D => Di => D.tag === 'svg' || D.tag === 'g'
         ? _r.set({svg: true})(Di)
         : Di;
 
-//  .linkDoc : (data, data) -> data
-data.linkDoc = 
-    (D, Di) => _r.set({doc: D.doc})(Di);
+//          : data -> data -> data
+let linkDoc = 
+    D => Di => _r.set({doc: D.doc})(Di);
 
+//       : data -> data -> data
+let link = 
+    l => [linkSvg, linkDoc]
+        .map(f => f(l))
+        .reduce((f, g) => __(f, g));
+
+//  .link : data -> [tree(data)] -> tree(data)
+data.link = 
+    (n, b) => [
+        n, 
+        b.map(([ni, bi]) => [link(n)(ni), bi])
+    ]
+
+//  .tree : tree(data) -> tree(data)
+data.tree = 
+    tree.nat(data.link);
 
 module.exports = data;
 
@@ -1422,12 +1397,24 @@ module.exports = data;
 module.exports = dom;
 
 let __ = require('lolo'),
+    tree = require('./tree'),
     parse = require('./parse'),
     data = require('./data'),
     node = require('./node');
 
+let _r = __.record();
 
-// dom a :: a -> node
+// .tree : dom(m) -> tree(m, data)
+dom.tree = 
+    t => tree.cofmap(t.model())(
+        [
+            data.apply(t.data()), 
+            __(t.branch(), __.map(dom.tree))
+        ]
+    );
+
+
+// dom(m) -> m -> node
 function dom (t, a, b) {
         
     let {tag, attr, branch, html} = parse.args(t, a, b);
@@ -1450,10 +1437,18 @@ function dom (t, a, b) {
     };
 
     let my = 
-        M => __(data.build(self), node.build)(M);
+        M => __(
+            my.tree,                // m -> tree(m, data)
+            tree.nat(data.link),    // tree(m, data) -> tree(m, data)
+            tree.map(node.unit),    // tree(m, data) -> tree(m, node)
+            tree.nat(node.link)     // tree(m, node) -> tree'(m, node)
+        )(M);
+
+    my.tree = 
+        M => tree.apply(dom.tree(my))(__.log(M || {}));
 
     my.data = 
-        () => self;
+        () => _r.without('branch', 'model')(self);
 
     my.append = 
         (...bs) => {
@@ -1466,18 +1461,24 @@ function dom (t, a, b) {
     return __.getset(my, self);
 }
 
+let createElement =
+    tag => {
+        let my = {tag, branch: []};
+        my.appendChild = elem => my.branch.push(elem);
+        my.setAttribute = __.null;
+        my.setAttributeNS = __.null;
+        my.addEventListener = __.null;
+        return my;
+    };
+
 dom.document = (typeof window !== 'undefined')
     ? window.document
     : ({
-        createElement : 
-            tag => {
-                let my = {tag, branch: []};
-                my.appendChild = elem => my.branch.push(elem);
-                return my;
-            }
-    })
+        createElement, 
+        createElementNS: (_, tag) => createElement(tag)
+    });
 
-},{"./data":16,"./node":20,"./parse":21,"lolo":1}],18:[function(require,module,exports){
+},{"./data":16,"./node":20,"./parse":21,"./tree":22,"lolo":1}],18:[function(require,module,exports){
 let __ = require('lolo'),
     _r = __.record();
 
@@ -1489,16 +1490,16 @@ dom.select =
         : str;
 
 dom.append = 
-    (str, node) => dom.select(str).appendChild(node());
+    (str, node) => M => dom.select(str).appendChild(node(M));
 
 dom.replace = 
-    (str, node) => dom.select(str).replaceWith(node());
+    (str, node) => M => dom.select(str).replaceWith(node());
 
 dom.remove = 
-    (str) => dom.select(str).remove();
+    (str) => () => dom.select(str).remove();
 
 dom.set = 
-    (str, attrs) => {
+    (str) => attrs => {
         let N = dom.select(str), 
             setAttr = N instanceof SVGElement 
                 ? (v, k) => N.setAttributeNS(null, k, v)
@@ -1566,20 +1567,17 @@ node.unit = D => {
     return N;
 }
 
-//  .link : (node, node) -> node
+
+//  .link : (n -> [T(n)] -> T(n))
 node.link = 
-    (N, Ni) => {
-        N.appendChild(Ni);
-        return Ni;
-    }
+    (N, B) => {
+        B.forEach(Ni => N.appendChild(Ni));
+        return N;
+    };
 
-
-//  .build : tree(data) -> node
-node.build = 
-    tree.build(
-        node.unit,
-        node.link
-    );
+//  .tree : tree(n) -> T(n)
+node.tree = 
+    tree.nat(node.link);
 
 //------ SVG ------
 
@@ -1635,7 +1633,7 @@ Parse.branch =
         if (Array.isArray(b)) 
             return (t(b[0]) === 'function')
                 ? b 
-                : dom(...b);
+                : dom(...b)
         return b
     };
 
@@ -1667,8 +1665,10 @@ module.exports = Parse;
 },{"./dom":17}],22:[function(require,module,exports){
 let __ = require('lolo');
 
-/*------ tree type ------ 
+/*------ Function Trees ------ 
  
+    N.B. This file should be moved to the `__` package. 
+
     tree(n) :: (
         n,
         [tree(n)]
@@ -1679,122 +1679,136 @@ let __ = require('lolo');
         m -> [tree(m, n)] 
     )
 
-*/
+    More generally, we should view tree(m, n) as a type class: 
 
-//  .eval : m -> tree(m, n) -> tree(n)
-tree.eval = 
-    M => ([tn, tb]) => [
-        tn(M),
-        __.map(tree.eval(M))(tb(M))
-    ];
+    t(m, n) instance tree(m, n) where: 
 
-//  .apply : tree(m, n) -> m -> tree(n)
-tree.apply = 
-    t => M => tree.eval(M)(t);
-
-//  .develop : (m -> tree(n)) -> tree(m, n)
-tree.develop = 
-    t => [
-        M => t(M)[0],
-        M => __.map(tree.develop)(t(M)[1])
-    ];
-
-
-//------ Functors ------
-
-//  .fmap : (n -> n') -> tree(m, n) -> tree(m, n')
-tree.fmap = 
-    f => ([tn, tb]) => [ 
-        __.pipe(tn, f),
-        __.pipe(tb, __.map(tree.fmap(f)))  
-    ];
-
-//  .cofmap : (m -> m') -> tree(m', n) -> tree(m, n)
-tree.cofmap = 
-    g => ([tn, tb]) => [
-        __.pipe(g, tn),
-        __.pipe(g, tb, __.map(tree.cofmap(g)))
-    ];
-
-
-//------ Monad ------
-
-//  .unit : n -> tree(m, n)
-tree.unit = 
-    N => [
-        () => N,
-        () => []
-    ];
-
-//  .compose : tree(m, tree(m, n)) -> tree(m, n)
-tree.compose = 
-    ([ttn, ttb]) => [
-        M => ttn(M)[0],
-        M => [
-            ...ttn(M)[1], 
-            ...ttb(M).map(tree.compose)
-        ]
-    ];
-
-
-//------ Construction ------
-/*  
-    m ?-> n :: n || m -> n
-
-    tree(m ? n) :: (
-        m ?-> n,
-        m ?-> tree(m ? n)
-    )
+        t.link :    (m -> n) -> (m -> [t(m, n)]) -> t(m, n)
         
+        t.node :    t(m, n) -> m -> n
+
+        t.branch :  t(m, n) -> m -> [t(m, n)]
 */
 
-//  .depend : ((m ?-> n) -> (m -> n)) -> tree(m ? n) -> tree(m, n)
-tree.depend = 
+function Tree (type={}) {
 
-    isFunction => {
+    let T   = type.link      || ((n, b) => [n, b]),
+        _n  = type.node      || (t => t[0]),
+        _b  = type.branch    || (t => t[1]);
+  
+    let tree = (n, b) => T(n, b);
+    tree.node = _n;
+    tree.branch = _b;
 
-        //  (m ?-> n) -> bool
-        let isF = isFunction || (tn => typeof tn === 'function');
+    //  .eval : m -> tree(m, n) -> tree(n)
+    tree.eval = 
+        M => t => tree.apply(t)(M);
+
+
+    //------ Functors ------
+
+    //  .map : (n -> n') -> tree(n) -> tree(n')
+    tree.map = 
+        f => t => T(
+            f(_n(t)),
+            _b(t).map(tree.map(f))
+        );
+
+    //  .fmap : (n -> n') -> tree(m, n) -> tree(m, n')
+    tree.fmap = 
+        f => t => T( 
+            __(_n(t), f),
+            __(_b(t), __.map(tree.fmap(f)))  
+        );
+
+    //  .cofmap : (m -> m') -> tree(m', n) -> tree(m, n)
+    tree.cofmap = 
+        g => t => T(
+            __(g, _n(t)),
+            __(g, _b(t), __.map(tree.cofmap(g)))
+        )
+
+
+    //------ Natural Transformations ------
+
+    //  .apply : tree(m, n) -> m -> tree(n)
+    tree.apply = 
+        t => M => T(
+            __(_n(t))(M),
+            __(_b(t))(M).map(ti => tree.apply(ti)(M))
+        );
+
+    //  .nat ( tree' ) : tree(n) -> tree'(n) 
+    tree.nat = 
+        S => t => S(
+            _n(t),
+            _b(t).map(tree.nat(S))
+        )
+
+    //  .fnat ( tree' ) : tree(m, n) -> tree'(m, n)
+    tree.fnat = 
+        S => t => S(
+            _n(t),
+            __(_b(t), __.map(tree.nat(S)))
+        );
+
+    //  .develop : (m -> tree(n)) -> tree(m, n)
+    tree.develop = 
+        t => T( 
+            M => _n(t(M)),
+            M => __.map(tree.develop)(_b(t(M)))
+        );
+
+
+    //------ Monad ------
+
+    //  .unit : n -> tree(m, n)
+    tree.unit = 
+        N => T(
+            () => N,
+            () => []
+        );
+
+    //  .compose : tree(m, tree(m, n)) -> tree(m, n)
+    tree.compose = 
+        tt => T(
+            __(_n(tt), _n),
+            M => [
+                ...__(_n(tt), _b)(M),
+                ...__(_b(tt), __.map(tree.compose))(M)
+            ]
+        );
+
+
+    /*------ Cast to Dependent Tree ------
+      
+        m ?-> n :: n || m -> n
+
+        tree(m ? n) :: (
+            m ?-> n,
+            m ?-> tree(m ? n)
+        )
+            
+    */
+    //  .depend : ((m ?-> n) -> (m -> n)) -> tree(m ? n) -> tree(m, n)
+    tree.depend = toFunction => {
 
         //  (m ?-> n) -> (m -> n)
-        let toF = tn => isF(tn) ? tn : () => tn;
+        let toF = toFunction || __; 
 
         //  tree(m ? n) -> tree(m, n)
-        return ([tn, tb]) => [
-            toF(tn), 
-            __.pipe(toF(tb), __.map(tree.depend(isF)))
-        ]
+        return t => T(
+            __(_n, toF)(t),
+            __(toF(_b(t)), __.map(tree.depend(toF)))
+        )
     };
 
 
-//  tree(m ? n) -> tree(m, n)
-function tree (t, isF) { 
-
-    return tree.depend(isF)(t);
-
+    return tree;
 }
 
-
-//------ Links ------
-
-//  .link : (n -> n -> n) -> tree(n) -> tree(n)
-tree.link = 
-    f => ([n, b]) => [
-        n, 
-        __.map(
-            ([ni, bi]) => [f(n, ni), __.map(tree.link(f))(bi)]
-        )(b)
-    ];
-
-//  .build : (n -> n') -> (n' -> n' -> eff(n')) -> tree(n) -> n'
-tree.build = 
-    (node, branch) => ([tn, tb]) => {
-        let n = node(tn);
-        tb.forEach(
-            ni => branch(n, tree.build(node, branch)(ni))
-        );
-        return n;
-    };
+let tree = Tree(); 
+tree.new = Tree;
 
 module.exports = tree;
 

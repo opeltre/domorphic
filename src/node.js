@@ -33,20 +33,17 @@ node.unit = D => {
     return N;
 }
 
-//  .link : (node, node) -> node
+
+//  .link : (n -> [T(n)] -> T(n))
 node.link = 
-    (N, Ni) => {
-        N.appendChild(Ni);
-        return Ni;
-    }
+    (N, B) => {
+        B.forEach(Ni => N.appendChild(Ni));
+        return N;
+    };
 
-
-//  .build : tree(data) -> node
-node.build = 
-    tree.build(
-        node.unit,
-        node.link
-    );
+//  .tree : tree(n) -> T(n)
+node.tree = 
+    tree.nat(node.link);
 
 //------ SVG ------
 
