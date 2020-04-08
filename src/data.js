@@ -39,6 +39,7 @@ data.types = {
     svg:    'm?a',
     attr:   'm?{m?a}', 
     prop:   'm?{m?a}',
+    style:  'm?{m?a}',
     on:     'm?{e(m)}',
     html:   'm?a',
     value:  'm?a',
