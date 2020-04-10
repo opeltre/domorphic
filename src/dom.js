@@ -42,17 +42,16 @@ dom.tree = t => M => {
 
 function dom (t, a, b) {
         
-    let {tag, attr, branch, html} = Parse.args(t, a, b);
+    let {tag, attr, branch, html} = parse.args(t, a, b);
 
     let self = {
-        // node construction 
+        // node 
         tag:        tag,
         svg:        tag === 'svg' || tag === 'g',
         attr:       attr,
         prop:       {},
         style:      {},
         on:         {},
-        branch:     branch,
         html:       html || '',
         value:      '',
         class:      '',

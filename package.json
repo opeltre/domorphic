@@ -1,17 +1,17 @@
 {
-  "name": "@opeltre/forest",
-  "version": "0.0.8",
+  "name": "domorphic",
+  "version": "0.0.0",
   "description": "a functional and eventful template and framework",
   "main": "back.js",
   "directories": {
     "example": "examples"
   },
   "scripts": {
-    "test": "echo '_F _F _F'"
+    "test": "echo 'dom dom dom'"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opeltre/virtual-view.git"
+    "url": "git+https://github.com/opeltre/domorphic.git"
   },
   "keywords": [
     "functional",
@@ -24,8 +24,10 @@
   "author": "Olivier Peltre",
   "license": "GPL-2.0",
   "bugs": {
-    "url": "https://github.com/opeltre/virtual-view/issues"
+    "url": "https://github.com/opeltre/domorphic/issues"
   },
-  "homepage": "https://github.com/opeltre/virtual-view#readme",
-  "dependencies": {}
+  "homepage": "https://github.com/opeltre/domorphic#readme",
+  "dependencies": {
+    "lolo": "file:__"
+  }
 }
