@@ -26,6 +26,8 @@ node.unit = D => {
 
     _r.forEach((v, k) => N.addEventListener(k, v))(D.on);
 
+    _r.assign(D.style)(N.style);
+
     N.innerHTML = D.html;
 
     N.value = D.value;

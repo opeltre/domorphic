@@ -80,8 +80,8 @@ dom.stack :: dom a -> [ dom ] a
 ``` 
 let Kf = dom.keys(f),
     Ns = Kf({
-        'du': { msg: 'the worm is the spice' }
-        'ne': { msg: 'the spice is the worm' }
+        'sha': { msg: 'the worm is the spice' }
+        'ksa': { msg: 'the spice is the worm' }
     });
 
 f   : dom a 
