@@ -90,8 +90,10 @@ function dom (t, a, b) {
         model => dom.map(my, model);
 
     my._domInstance = 'node';
+    
+    let records = ['on', 'attr', 'style'];
+    return __.getset(my, self, {records});
 
-    return __.getset(my, self);
 }
 
 
