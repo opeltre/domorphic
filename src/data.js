@@ -73,12 +73,12 @@ data.apply =
 //          : data -> data -> data
 let linkSvg = 
     D => Di => D.tag === 'svg' || D.tag === 'g'
-        ? _r.set({svg: true})(Di)
+        ? _r.assign({svg: true})(Di)
         : Di;
 
 //          : data -> data -> data
 let linkDoc = 
-    D => Di => _r.set({doc: D.doc})(Di);
+    D => Di => _r.assign({doc: D.doc})(Di);
 
 //       : data -> data -> data
 let link = 
