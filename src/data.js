@@ -52,7 +52,7 @@ data.maps = {
 //              {m ?-> a} -> m -> {a}
     'm?{m?a}':  __(_r.map(v => __(v)), _r.apply),
 //              {l} -> m -> {l(m)}
-    'm?{e(m)}': ls => M => _r.map(l => e => l((e || {}).target, M))(ls)
+    'm?{e(m)}': ls => M => _r.map(listener => e => listener(e, M))(ls)
 };
 
 //  .apply : data(m) -> m -> data

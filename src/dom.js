@@ -64,15 +64,11 @@ function dom (t, a, b) {
     
     //  my : m -> node
     let my = 
-        (M={}) => __(
-            self.model, 
-            my.tree,
-            dom.toNode
-        )(M);
+        M => __(my.tree, dom.toNode)(M);
 
     //.tree : m -> tree(data)
     my.tree = 
-        M => dom.tree(my)(M || {});
+        dom.tree(my);
 
     //.data : () -> data(m) 
     my.data = 
@@ -85,7 +81,7 @@ function dom (t, a, b) {
             return my;
         };
 
-    //.map : () -> [dom](m)
+    //.map : (m' -> m) -> [dom](m')
     my.map = 
         model => dom.map(my, model);
 
@@ -107,20 +103,17 @@ dom.map = function (node, model) {
         node :  node,
         model : model || __.id,
     };
-
+    
+    //  my : m -> [node] 
     let my = 
-        (M={}) => __(
-            self.model,
-            my.trees,
-            __.map(dom.toNode)
-        )(M);
+        M => __(my.trees, __.map(dom.toNode))(M);
     
     //.trees : m -> [tree(data)]
     my.trees = 
-        (M={}) => __(
+        __(
             self.model, 
             __.map(mi => dom.apply(self.node)(mi).tree(mi))
-        )(M);
+        );
 
     my._domInstance = 'map';
 
