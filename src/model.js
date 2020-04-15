@@ -2,8 +2,11 @@ let __ = require('lolo'),
     _r = __.r;
 
 /*------ Stateful Models ------
+
+    This actually creates a bound stateful instance, 
+    i.e. the initial state is defined at construction. 
     
-    say something. 
+    This is probably not what we want. 
 */
 
 //  model : m -> St(m, m)
