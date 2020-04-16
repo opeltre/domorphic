@@ -1,4 +1,5 @@
-let __ = require('lolo');
+let __ = require('lolo'),
+    _r = __.r;
 
 /*------ State Monad ------
 
@@ -71,7 +72,6 @@ function state (st) {
 
     let chain = st ? Array(...st._chain) : [];
 
-    //  my : St(s, a)
     let my = s0 => my.run(s0);
 
     //--- State Access ---
@@ -113,6 +113,15 @@ function state (st) {
         __.pipe(my.run, ([s1, r1]) => r1);
     
 
+    //--- Record States ---
+
+    ['get', 'pluck', 'without', 'stream', 'filter']
+        .forEach(method => my[method] = __.pipe(_r[method], my.reads));
+
+    ['set', 'update', 'streamline']
+        .forEach(method => my[method] = __.pipe(_r[method], my.puts));
+
+
     //--- Chain Edition ---
 
     my.append = 
@@ -124,5 +133,6 @@ function state (st) {
     my._chain = chain;
     return my;
 }
+
 
 module.exports = state;

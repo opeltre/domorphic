@@ -4,16 +4,8 @@ let __ = require('lolo'),
     tree = require('./tree'),
     parse = require('./parse'),
     data = require('./data'),
-    node = require('./node');
-
-let _r = __.r
-
-// .toNode : tree(data) -> node
-dom.toNode = __(
-    tree.nat(data.link),
-    tree.map(node.unit),
-    tree.nat(node.link)
-);
+    IO = require('./io'),
+    _r = __.r;
 
 // .apply : (m ?-> dom(m)) -> m -> dom(m)
 dom.apply = 
@@ -22,21 +14,18 @@ dom.apply =
         : () => n;
 
 // .tree : dom(m) -> m -> tree(data)
-dom.tree = t => M => {
-
-    let _M = t.model()(M);
-
-    let node = data.apply(t.data())(_M),
-        branch = dom.apply(t.branch())(_M);
-    
-    return [
-        node, 
-        branch._domInstance === 'map'
-            ? branch.trees(_M)
-            : __.map(ti => ti.tree(_M))(branch)
-    ];
-};
-
+dom.tree = 
+    t => M => {
+        let _M = t.model()(M),
+            node = data.apply(t.data())(_M),
+            branch = dom.apply(t.branch())(_M);
+        return data.link(
+            node, 
+            branch._domInstance === 'map'
+                ? branch.trees(_M)
+                : __.map(ti => ti.tree(_M))(branch)
+        );
+    };
 
 //------ dom(m) :: m -> node ------
 
@@ -55,41 +44,36 @@ function dom (t, a, b) {
         html:       html || '',
         value:      '',
         class:      '',
-        doc:        dom.document,
         // branches
         branch:     branch,
         // pull-back
-        model:      __.id
+        model:      __.id,
+        // IO location
+        put:        'body',
+        place:      null 
     };
     
     //  my : m -> node
-    let my = 
-        M => __(my.tree, dom.toNode)(M);
+    let my = M => __(my.tree, dom.toNode)(M);
 
     //.tree : m -> tree(data)
-    my.tree = 
-        dom.tree(my);
+    my.tree = dom.tree(my);
 
     //.data : () -> data(m) 
-    my.data = 
-        () => _r.without('branch', 'model')(self);
+    my.data = () => _r.without('branch', 'model')(self);
     
     //.append : () -> ()
-    my.append = 
-        (...bs) => {
-            self.branch = [...self.branch, ...bs];
-            return my;
-        };
+    my.append = (...bs) => {
+        self.branch = [...self.branch, ...bs];
+        return my;
+    };
 
     //.map : (m' -> m) -> [dom](m')
-    my.map = 
-        model => dom.map(my, model);
+    my.map = model => dom.map(my, model);
 
     my._domInstance = 'node';
-    
     let records = ['on', 'attr', 'style'];
     return __.getset(my, self, {records});
-
 }
 
 
@@ -105,40 +89,19 @@ dom.map = function (node, model) {
     };
     
     //  my : m -> [node] 
-    let my = 
-        M => __(my.trees, __.map(dom.toNode))(M);
+    let my = M => __(my.trees, __.map(dom.toNode))(M);
     
     //.trees : m -> [tree(data)]
-    my.trees = 
-        __(
-            self.model, 
-            __.map(mi => dom.apply(self.node)(mi).tree(mi))
-        );
+    my.trees = __(
+        self.model, 
+        __.map(mi => dom.apply(self.node)(mi).tree(mi))
+    );
 
     my._domInstance = 'map';
-
+    _r.assign(_r.without('model', 'data')(node))(my);
     return __.getset(my, self);
 }
 
 dom.document = (typeof window !== 'undefined')
     ? window.document
-    : mockDocument();
-
-//------ Mock Document ------
-
-function mockDocument () {
-
-    function createElement (tag) {
-        let my = {tag, branch: []};
-        my.appendChild = elem => my.branch.push(elem);
-        my.setAttribute = __.null;
-        my.setAttributeNS = __.null;
-        my.addEventListener = __.null;
-        return my;
-    };
-
-    return {
-        createElement, 
-        createElementNS: (_, tag) => createElement(tag)
-    };
-}
+    : IO.document();
