@@ -1,4 +1,5 @@
 let __ = require('lolo'),
+    tree = require('./tree'),
     dom = require('./dom');
 
 let _r = __.r;
@@ -20,9 +21,20 @@ IO.bind = io => iof => io.bind(iof);
 IO.put = (node, k) => m => {
     let io = IO(),
         data = dom.tree(node)(m),
-        n = Node(data, io),
-        key = k || data[0].put 
-    return io.append(key, n);
+        key = k || data[0].put,
+        n = Node(data, io);
+    return io.select(key)
+        .push(n0 => n0.appendChild(n));
+}
+
+//.replace : dom(m) -> m -> IO(a)
+IO.replace = (node, k) => m => {
+    let io = IO(),
+        data = dom.tree(node)(m),
+        key = k || data[0].place;
+    io.select(key);
+    let n1 = Node(data, io);
+    return io.push(n0 => n0.replaceWith(n1));
 }
 
 
@@ -43,11 +55,10 @@ function IO (doc) {
     
     //--- Monad ---
 
-    my.push = pf => {
-        my.promise = my.promise.then(pf);
+    my.push = f => {
+        my.promise = my.promise.then(f)
         return my;
     };
-    my.then = my.push;
 
     my.return = y => my.push(() => y)
 
@@ -68,6 +79,9 @@ function IO (doc) {
         let iob = bind(iof(x));
         return iob.promise.then(unbind(iob));
     });
+
+    my.then = my.push;
+    my.do = f => my.push(x => {f(x); return x});
 
     //--- Input Stream ---
 
@@ -94,7 +108,7 @@ function IO (doc) {
         my.select(k).do(p => p && p.appendChild(n));
 
     my.replace = (k, n) => 
-        my.select(k).do(n0 => n0 && n0.replaceWith(n));
+        my.select(k).do(n0 => __.logs('replacing:')(n0) && n0.replaceWith(n));
 
     my.remove = (k) => 
         my.select(k).do(n => n && n.remove());
@@ -102,23 +116,30 @@ function IO (doc) {
     //--- Node Register --- 
     
     let select = k => typeof k === 'string' 
-        ? my.stack[k] || my.doc.querySelector(str);
+        ? (my.stack[k] || my.doc.querySelector(k))
         : (Array.isArray(k) 
-            ? k.reduce((r, ki) => r[ki], my.stack)
+            ? my.stack[k[0]][k[1]]
             : k
         );
 
     let keep = (k, n) => typeof k === 'string'
-        ? my.stack[k] = n;
-        : k.reduce((r, ki) => r[ki], my.stack) = n; 
+        ? my.stack[k] = n
+        : my.stack[k[0]][k[1]] = n;
 
     my.select = k => 
-        my.return(select(k))
-            .catch(__.logs(`IO Error: empty selection ${k}`));
+        my.push(() => select(k))
+            .push(n => {if (n) {return n} throw new Error('IO Error')})
+//            .catch(__.logs(`IO Error: empty selection ${k}`));
 
     my.keep = (k, n) => 
-        my.do(keep(k, n))
-            .catch(__.logs(`IO Error: cannot access location ${k}`))
+        my.do(() => keep(k, n))
+  //          .catch(__.logs(`IO Error: cannot access location ${k}`))
+    
+    //--- IO Errors ---
+    my.catch = f => {
+        my.promise = my.promise.catch(f);
+        return my;
+    }
 
     return my;
 }
@@ -157,7 +178,7 @@ Node.unit = (D, io=IO()) => {
 
     D.tag === 'svg' && SVG(N);
 
-    _r.forEach(element.setAttribute)(D.attr);
+    _r.forEach(setAttribute)(D.attr);
     _r.forEach(addListener)(D.on);
     _r.forEach((v, k) => N[k] = v)(D.prop);
     _r.assign(D.style)(N.style);
@@ -167,7 +188,15 @@ Node.unit = (D, io=IO()) => {
     return N;
 }
 
-// -   -   -   -   -
+//------ Node Register ------
+
+function getNode (stack, k) {
+    let n = stack[k]
+    if (n && !n.parentNode)
+        stack[k] = null;
+    return n && n.parentNode ? n : null;
+};
+
 //------ SVG ------
 
 function SVG (node) {

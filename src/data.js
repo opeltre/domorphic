@@ -44,7 +44,8 @@ data.types = {
     html:   'm?a',
     value:  'm?a',
     class:  'm?a',
-    doc:    'm?a',
+    place:  'm?a',
+    put:    'm?a'
 };
 
 data.maps = {

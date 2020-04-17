@@ -3,7 +3,7 @@ let __ = require('lolo'),
 
 /*------ State Monad ------
 
-    Stateful computation are programs which output
+    Stateful computations are programs which output
     both a final state and a return value: they may 
     be chained without any initial state being set. 
 

@@ -1,10 +1,8 @@
 let dom = require('./src/dom'),
-    model = require('./src/model'),
-    elements = require('./src/elements'),
-    effects = require('./src/effects');
+    IO = require('./src/io'),
+    State = require('./src/state');
 
 module.exports = Object.assign(dom, 
-    {model},
-    elements, 
-    effects
+    {IO},
+    {State}
 );

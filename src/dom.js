@@ -55,6 +55,9 @@ function dom (t, a, b) {
     
     //  my : m -> node
     let my = M => __(my.tree, dom.toNode)(M);
+   
+    //.io : m -> IO(e)
+    my.io = M => IO.put(my)(M).await();
 
     //.tree : m -> tree(data)
     my.tree = dom.tree(my);
@@ -97,8 +100,8 @@ dom.map = function (node, model) {
         __.map(mi => dom.apply(self.node)(mi).tree(mi))
     );
 
+    _r.assign(_r.without('model', 'data', '_domInstance')(node))(my);
     my._domInstance = 'map';
-    _r.assign(_r.without('model', 'data')(node))(my);
     return __.getset(my, self);
 }
 
