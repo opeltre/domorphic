@@ -13,9 +13,9 @@ let __ = require('lolo'),
 
     The `St(s, -)` type constructor essentially restricts 
     the covariant hom-functor `Hom(s, -)` to product types
-    of the form `(s, a)`: 
+    of the form `(a, s)`: 
 
-        St(s, a) = s -> (s, a) 
+        St(s, a) = s -> (a, s) 
 
 
     `St(s, -)` is hence a monad as well, implementing methods:
@@ -30,7 +30,7 @@ let __ = require('lolo'),
 
     While evaluating the computation is done by any of the following: 
         
-        run     : St(s, a) -> s -> (s, a)
+        run     : St(s, a) -> s -> (a, s)
         --------
         eval    : St(s, a) -> s -> a
         --------
@@ -44,6 +44,7 @@ let __ = require('lolo'),
             .bind(r => state().put(r + 1))
         
         let out1 = st.run(0)
+        //- [0, 1]
 */
 
 
@@ -62,7 +63,7 @@ state.bind =
 
 //   .compose : St(s, St(s, a)) -> St(s, a)
 state.compose = 
-    stst => stst.append((s, st) => st.run(s)); 
+    stst => stst.append((st, s) => st.run(s)); 
 
 
 
@@ -72,46 +73,46 @@ function state (st) {
 
     let chain = st ? Array(...st._chain) : [];
 
-    let my = s0 => my.run(s0);
+    let my = s => my.run(s);
 
     //--- State Access ---
     
     my.read = 
-        ()  =>  my.append(s => [s, s]);
+        ()  =>  my.append((_, s) => [s, s]);
 
     my.reads = 
-        f => my.append(s => [s, f ? f(s) : s]);
+        f => my.append((_, s) => [f ? f(s) : s, s]);
 
     my.put = 
-        s1 => my.append((s, r) => [s, null]);
+        s => my.append((r, _) => [null, s]);
     
     my.puts = 
-        f => my.append((s, r) => [f(s), null]); 
+        f => my.append((r, s) => [null, f(s)]); 
 
     //--- Push-forward ---
 
     my.push = 
-        f => my.append((s, r) => [s, f(r)]);
+        f => my.append((r, s) => [f(r), s]);
 
     //--- Monad ---
 
     my.return = 
-        r => my.append(s => [s, r]);
+        r => my.append((_, s) => [r, s]);
 
     my.bind = 
-        sf => my.append((s1, r1) => sf(r1).run(s1));
+        stf => my.append((r, s) => stf(r).run(s));
 
     //--- Evaluation ---
 
     my.run = 
-        s0 => __.pipe(...chain)([s0, null]);
+        s => __.pipe(...chain)([null, s]);
+    
+    my.eval = 
+        __.pipe(my.run, ([r, s]) => r);
     
     my.exec = 
-        __.pipe(my.run, ([s1, r1]) => s1);
+        __.pipe(my.run, ([r, s]) => s);
 
-    my.eval = 
-        __.pipe(my.run, ([s1, r1]) => r1);
-    
 
     //--- Record States ---
 
