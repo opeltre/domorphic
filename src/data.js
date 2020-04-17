@@ -22,7 +22,7 @@ let __ = require('lolo'),
 
         __ : (m ?-> a) -> m -> a
 
-    While `__` also acts as composition: 
+    And `__` also acts as composition: 
 
         __ : ((a -> b), ..., (c -> d)) -> (a -> d)
 
@@ -44,7 +44,8 @@ data.types = {
     html:   'm?a',
     value:  'm?a',
     class:  'm?a',
-    doc:    'm?a',
+    place:  'm?a',
+    put:    'm?a'
 };
 
 data.maps = {
@@ -52,7 +53,7 @@ data.maps = {
 //              {m ?-> a} -> m -> {a}
     'm?{m?a}':  __(_r.map(v => __(v)), _r.apply),
 //              {l} -> m -> {l(m)}
-    'm?{e(m)}': ls => M => _r.map(l => e => l((e || {}).target, M))(ls)
+    'm?{e(m)}': listeners => M => _r.map(__.bindr(M))(listeners)
 };
 
 //  .apply : data(m) -> m -> data
@@ -82,9 +83,9 @@ let linkDoc =
 
 //       : data -> data -> data
 let link = 
-    l => [linkSvg, linkDoc]
-        .map(f => f(l))
-        .reduce((f, g) => __(f, g));
+    l => __.pipe(
+        ...[linkSvg, linkDoc].map(f => f(l))
+    );
 
 //  .link : data -> [tree(data)] -> tree(data)
 data.link = 
@@ -92,9 +93,5 @@ data.link =
         n, 
         b.map(([ni, bi]) => [link(n)(ni), bi])
     ]
-
-//  .tree : tree(data) -> tree(data)
-data.tree = 
-    tree.nat(data.link);
 
 module.exports = data;

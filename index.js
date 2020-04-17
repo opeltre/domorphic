@@ -1,5 +1,8 @@
 let dom = require('./src/dom'),
-    elements = require('./src/elements'),
-    effects = require('./src/effects');
+    IO = require('./src/io'),
+    State = require('./src/state');
 
-module.exports = Object.assign(dom, elements, effects);
+module.exports = Object.assign(dom, 
+    {IO},
+    {State}
+);
