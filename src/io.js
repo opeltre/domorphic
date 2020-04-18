@@ -37,6 +37,9 @@ IO.replace = (node, k) => m => {
     return io.push(n0 => n0.replaceWith(n1));
 }
 
+//.node : dom(m) -> m -> Node
+IO.node = node =>  
+    __.pipe(dom.tree(node), Node);
 
 //------ IO(e) ------
 

@@ -16,6 +16,8 @@ dom.apply =
 // .tree : dom(m) -> m -> tree(data)
 dom.tree = 
     t => M => {
+        if (t._domInstance === 'pullback')
+            return t.tree(M);
         let _M = t.model()(M),
             node = data.apply(t.data())(_M),
             branch = dom.apply(t.branch())(_M);
@@ -26,6 +28,10 @@ dom.tree =
                 : __.map(ti => ti.tree(_M))(branch)
         );
     };
+
+
+
+
 
 //------ dom(m) :: m -> node ------
 
@@ -54,7 +60,7 @@ function dom (t, a, b) {
     };
     
     //  my : m -> node
-    let my = M => __(my.tree, dom.toNode)(M);
+    let my = m => IO.node(my)(m);
    
     //.io : m -> IO(e)
     my.io = M => IO.put(my)(M).await();
@@ -80,7 +86,19 @@ function dom (t, a, b) {
 }
 
 
-//------ [dom](m) :: [m] -> [node] ------
+//------ pull: (m -> m') -> dom(m') -> dom(m) ------
+
+dom.pull = function (g) {
+    return node_b => {
+        let my = m => node_b(g(m));
+        my.tree = m => node_b.tree(g(m));
+        my._domInstance = "pullback"
+        return my;
+    };
+};
+
+
+//------ map: (m -> Node) -> [m] -> [Node] ------
 
 dom.map = function (node, model) {
     
@@ -92,12 +110,15 @@ dom.map = function (node, model) {
     };
     
     //  my : m -> [node] 
-    let my = M => __(my.trees, __.map(dom.toNode))(M);
-    
+    let my = __(
+        self.model,
+        __.map(mi => IO.node(self.node)(mi))
+    );
+
     //.trees : m -> [tree(data)]
     my.trees = __(
         self.model, 
-        __.map(mi => dom.apply(self.node)(mi).tree(mi))
+        __.map(mi => self.node(mi).tree(mi))
     );
 
     _r.assign(_r.without('model', 'data', '_domInstance')(node))(my);
