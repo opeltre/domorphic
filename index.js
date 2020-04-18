@@ -1,8 +1,10 @@
 let dom = require('./src/dom'),
     IO = require('./src/io'),
-    State = require('./src/state');
+    state = require('./src/state'),
+    update = require('./src/update');
 
 module.exports = Object.assign(dom, 
     {IO},
-    {State}
+    {state},
+    {update}
 );

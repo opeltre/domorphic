@@ -1,89 +1,85 @@
-# domorphic
+[functor][https://ncatlab.org/nlab/show/functor#definition]
 
-[domorphic](http://mathchat.fr:8090/ex/index.html)
-is a plain javascript program and 
-a DOM templating philosophy.
+# Domorphic
 
-## domorphisms 
+A plain javascript program to interact with the DOM, 
+in a functional, reactive and KISS philosophy.
 
-The basic domorphic instance is a function `f` 
-mapping a js model object `M`
-to a DOM node `N`:
+Inspired by the power of [d3](http://github.com/d3)
+and the beauty of [elm](http://elm-lang.org),
+this library attempts to breed their many respective qualities,
+so that shaping DOM interfaces within js 
+may become smooth and enjoyable again! 
 
-```javascript
-//  M : a
-let M = { msg: 'Hmmm... Shai Halud' };
+## Installation 
 
-//  f : a -> node
-let f = dom('h1').html(M => M.msg);
-
-//  N : node
-let N = f(M);
-
-document.body.appendChild(N);
+```sh
+curl https://raw.githubusercontent.com/opeltre/domorphic/master/bundle.js\
+    >> domorphic.js
 ```
 
-We call such functions morphisms and write
-`dom a` for the type of morphisms 
-accepting models of type `a`.
- 
-```javascript
-//  dom a = a -> node
+## Morphisms 
+
+A domorphic instance is just a function returning a DOM node.
+That's it! 
+```js
+let node = dom('h1').html('Hello World:!')();
 ```
+At first glance, the library is hence little more 
+than a convenient way to parametrise functions from 
+a given input type to the DOM node type. 
+All node attributes are interpreted either as values 
+or data dependent functions, supplied by d3-like  
+chainable accessors. 
 
-Any function `u : a -> b` 
-has a pull-back `U : dom b -> dom a` 
-by right composition on the model.
+In scientific terms, 
+this sets you to explore 
+the polymorphic type `a -> Node` 
+of programs returning `Node`. 
 
-```javascript
-//  u : a -> b
-let u = ({ x, y })=> 
-    ({
-        transform: `translate(${x} ${y})` 
-    });
+The branching attribute itself may be interpreted
+as an `a -> [Node]` node array returning function:  
 
-//  f : dom b
-let f = dom('circle').attr(M => M);
+```js
+//  m : [str]
+let m = ['cats', 'are', 'cute'];
 
-//  U : ( dom b -> dom a )
-let U = dom.functor(u);
-
-//  g : dom a
-let g = U(f);
-
-document.body.appendChild(
-    g({ x: 2, y: 3})
+//  f : [str] -> Node
+let f = dom('div').branch(
+    m => m.map(
+        mi => dom('p').html(mi)
+    )
 );
+
+document.body.appendChild(f(m));
+
+//N.B.  Sending `str -> Node` to `[str] -> [Node]` is best done 
+//      with map instances, see the equivalent example below :)
 ```
 
-The `dom` type assignment is thus a contravariant functor.
-
+Given a function `a -> b`, you may also 
+compose your instance `b -> Node`, 
+to get an `a -> Node` map: 
 ```
-//  dom.functor :: ( a-> b ) -> ( dom b -> dom a )
+pull : (a -> b) -> (b -> Node) -> (a -> Node)  
 ```
-## Indexing functors
+However esoteric, you're looking at
+the _contravariant [hom-functor](https://en.wikipedia.org/wiki/Hom_functor)_
+`Hom(-, Node)` in the _cartesian category_ of types. 
 
-Given a type `a`, 
-let us write `{ a }` and `[ a ]` 
-for the type of objects and arrays with values in `a`.
+```js
+//  g : (num, num) -> str
+let g = ([x, y]) => `translate(${x}, ${y})`; 
 
-The functoriality of `{ . }` and `[ . ]` induces maps:
+//  circle : str -> Node 
+let circle = dom('circle')
+    .attr('transform', m => m)
+    .pull(g);
 
+document.querySelector('svg').appendChild(circle([20, 30]));
 ```
-{ dom } a = { a } -> { node }
-[ dom ] a = [ a ] -> [ node ]
-
-dom.keys :: dom a -> { dom } a 
-dom.stack :: dom a -> [ dom ] a 
-```
-
-``` 
-let Kf = dom.keys(f),
-    Ns = Kf({
-        'sha': { msg: 'the worm is the spice' }
-        'ksa': { msg: 'the spice is the worm' }
-    });
-
-f   : dom a 
-Kf  : { a } -> { node }
-```
+Some people call this the _pullback of `circle` by `g`_. 
+Whatever, fortunately javascript doesn't have types,
+so there's no need to learn black magic to keep 
+[things](https://www.destroyallsoftware.com/talks/wat)
+running :) 

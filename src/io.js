@@ -89,16 +89,16 @@ function IO (doc) {
         awaits = closed; 
         return x
     };
-    let wait = resolve => {
-        awaits = __.pipe(close, resolve)
+    let wait = listener => {
+        awaits = __.pipe(close, listener)
     };
 
     my.await = () => my.push(() => ({then: wait}));
 
-    my.send = x => {
+    my.send = (...xs) => {
         if (bound_io)
-            return bound_io.send(x);
-        awaits(x)
+            return bound_io.send(...xs);
+        awaits(...xs)
         return my;
     };
 
@@ -133,7 +133,7 @@ function IO (doc) {
 
     my.keep = (k, n) => 
         my.do(() => keep(k, n))
-  //          .catch(__.logs(`IO Error: cannot access location ${k}`))
+//          .catch(__.logs(`IO Error: cannot access location ${k}`))
     
     //--- IO Errors ---
     my.catch = f => {

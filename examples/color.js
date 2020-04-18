@@ -1,7 +1,7 @@
 //--- Hexadecimal Color Picker ---
 
 let IO = dom.IO,
-    state = dom.State;
+    state = dom.state;
 
 //--- Initial Model ---
 
