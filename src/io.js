@@ -17,6 +17,10 @@ IO.return = y => IO(Promise.resolve(y));
 //.bind : IO(a) -> (a -> IO(b)) -> IO(b)
 IO.bind = io => iof => io.bind(iof);
 
+//.node : dom(m) -> m -> Node
+IO.node = node =>  
+    __.pipe(dom.tree(node), Node);
+
 //.put : dom(m) -> m -> IO(a)
 IO.put = (node, k) => m => {
     let io = IO(),
@@ -36,10 +40,6 @@ IO.replace = (node, k) => m => {
     let n1 = Node(data, io);
     return io.push(n0 => n0.replaceWith(n1));
 }
-
-//.node : dom(m) -> m -> Node
-IO.node = node =>  
-    __.pipe(dom.tree(node), Node);
 
 //.set : dom(m) -> m -> IO(a)
 IO.set = (node, k) => m => {
@@ -187,7 +187,9 @@ Node.unit = (D, io=IO()) => {
     let N = D.svg
         ? io.doc.createElementNS(SVG.NS, D.tag)
         : io.doc.createElement(D.tag);
+
     D.tag === 'svg' && SVG(N);
+    Node.set(N, D); 
 
     let addListener = 
         (v, k) => N.addEventListener(k, __.bindr(io)(v));
