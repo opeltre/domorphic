@@ -19,7 +19,7 @@ dom.tree =
         if (t._domInstance === 'pullback')
             return t.tree(M);
         let _M = t.pull()(M),
-            node = data.apply(t.data())(_M),
+            node = t.data(_M),
             branch = dom.apply(t.branch())(_M);
         return data.link(
             node, 
@@ -65,8 +65,8 @@ function dom (t, a, b) {
     //.tree : m -> tree(data)
     my.tree = dom.tree(my);
 
-    //.data : () -> data(m) 
-    my.data = () => _r.without('branch', 'pull')(self);
+    //.data : m -> data 
+    my.data = data.apply(_r.without('branch', 'model')(self));
     
     //.append : () -> ()
     my.append = (...bs) => {

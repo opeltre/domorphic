@@ -41,6 +41,15 @@ IO.replace = (node, k) => m => {
 IO.node = node =>  
     __.pipe(dom.tree(node), Node);
 
+//.set : dom(m) -> m -> IO(a)
+IO.set = (node, k) => m => {
+    let io = IO(),
+        data = node.data(m),
+        key = k || data.place;
+    return io.select(key)
+        .push(n => Node.set(n, data));
+};
+
 //------ IO(e) ------
 
 let closed = __.logs('- io closed -');
@@ -147,6 +156,15 @@ function IO (doc) {
     return my;
 }
 
+//------ Node Register ------
+
+function getNode (stack, k) {
+    let n = stack[k]
+    if (n && !n.parentNode)
+        stack[k] = null;
+    return n && n.parentNode ? n : null;
+};
+
 
 //------ DOM Node ------
 
@@ -169,36 +187,30 @@ Node.unit = (D, io=IO()) => {
     let N = D.svg
         ? io.doc.createElementNS(SVG.NS, D.tag)
         : io.doc.createElement(D.tag);
-    
-    D.place && io.keep(D.place, N);
-
-    let setAttribute = 
-        (v, k) => N instanceof SVGElement
-            ? N.setAttributeNS(null, k, v)
-            : N.setAttribute(k, v);
-    let addListener = 
-        (v, k) => N.addEventListener(k, __.bindr(io)(v));
-
     D.tag === 'svg' && SVG(N);
 
-    _r.forEach(setAttribute)(D.attr);
+    let addListener = 
+        (v, k) => N.addEventListener(k, __.bindr(io)(v));
     _r.forEach(addListener)(D.on);
-    _r.forEach((v, k) => N[k] = v)(D.prop);
-    _r.assign(D.style)(N.style);
 
-    N.innerHTML = D.html;
-    N.value = D.value;
+    D.place && io.keep(D.place, N);
     return N;
 }
 
-//------ Node Register ------
+Node.set = (n, d) => {
+    _r.assign(d.style)(n.style);
+    _r.forEach((v, k) => n[k] = v)(d.prop);
+    _r.forEach(Node.setAttribute(n))(d.attr);
+    n.classname = d.class;
+    n.innerHTML = d.html;
+    n.value = d.value;
+    return n;
+}
 
-function getNode (stack, k) {
-    let n = stack[k]
-    if (n && !n.parentNode)
-        stack[k] = null;
-    return n && n.parentNode ? n : null;
-};
+Node.setAttribute = n => (v, k) => 
+    n instanceof SVGElement 
+        ? n.setAttributeNS(null, k, v)
+        : n.setAttribute(k, v);
 
 //------ SVG ------
 
