@@ -105,17 +105,22 @@ dom.map = function (node, pull) {
         node :  node,
         pull : pull || __.id,
     };
-    
+   
     //  my : m -> [node] 
     let my = __(
         self.pull,
-        __.map(mi => IO.node(self.node)(mi))
+        __.map((mi, i) => IO.node(self.node)(mi))
     );
+
+    //        : num -> data -> data
+    let place = i =>  
+        _r.streamline({place: D => [D.place, i]});
 
     //.trees : m -> [tree(data)]
     my.trees = __(
         self.pull, 
-        __.map(mi => self.node.tree(mi))
+        __.map(mi => self.node.tree(mi)),
+        __.map(([n, b]) => [place(i)(n), b])
     );
 
     _r.assign(_r.without('pull', 'data', '_domInstance')(node))(my);

@@ -21,8 +21,7 @@ IO.bind = io => iof => io.bind(iof);
 IO.document = () => DOM();
 
 //.node : dom(m) -> m -> Node
-IO.node = node =>  
-    __.pipe(dom.tree(node), DOM.tree);
+IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
 
 /*------ Output ------
     
@@ -84,7 +83,7 @@ IO.remove = (node) => m => {
         .return(m);
 };
 
-IO.place = (node, k) => m => {
+IO.place = (node) => m => {
     let io = IO(),
         place = node.data(m).place
     return io.select(place)
