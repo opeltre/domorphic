@@ -58,7 +58,7 @@ data.maps = {
 
 //  .apply : data(m) -> m -> data
 data.apply = 
-    D => __(
+    D => M => __(
         _r.map(
 //          (m ?-> d(m)) -> m -> m ?-> d 
             (Dk, k) => __(Dk, data.maps[data.types[k]]),
@@ -66,7 +66,7 @@ data.apply =
             Dk => M => __(Dk(M))(M)
         ),
         _r.apply
-    )(D);
+    )(D)(M);
 
 
 //------ Propagated Attributes ------
