@@ -6,30 +6,27 @@ let IO = dom.IO,
 //--- Initial Model ---
 
 let M = {
-    color: '#cab',
+    color:  '#cab',
+    size:   ['150px', '150px'],
     digits: 3,
-    id:     '#color',
-    size:   [150, 150]
+    put:    '#app'
 };
 
 //--- View ---
 
 let app = dom('div')
-    .put(m => m.id);
+    .put(m => m.put);
 
-let view = dom('div#view')
+let view = dom('div')
     .place('view')
     .style('background-color', m => m.color)
     .style('width', m => m.size[0])
-    .style('height', m => m.size[1])
+    .style('height', m => m.size[1]);
 
 let input = dom('input')
     .on('keyup', listener)
-    .style('border', m => `1px solid black`)
-    .style('font-family', 'mono')
-    .style('margin-top', 5)
-    .style('text-align', 'right')
     .style('width', m => m.size[1])
+    .style('box-sizing', 'border-box');
 
 app.append(view, input);
 
@@ -44,19 +41,19 @@ function listener (e, io, m) {
 
 //--- Update ---
 
-let update = e => e !== '*'
+let update = e => e === 'start'
     ? state()
+        .reads(IO.put(app))
+    : state()
         .set('color', e)
         .reads(IO.replace(view))
-    : state()
-        .reads(IO.put(app))
 
 //--- Main ---
 
 let main = (e0, m0) => {
-    let [m1, io] = update(e0).run(m0);
+    let [io, m1] = update(e0).run(m0);
     return io.await()
         .bind(e1 => main(e1, m1));
 };
 
-main('*', M);
+main('start', M);
