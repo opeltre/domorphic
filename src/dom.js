@@ -120,6 +120,12 @@ dom.map = function (node, pull) {
     my.trees = __(
         self.pull, 
         __.map(mi => self.node.tree(mi)),
+        __.map(([n, b], i) => [place(i)(n), b])
+    );
+
+    my.data = __(
+        self.pull,
+        __.map(mi => self.node.data(mi)),
         __.map(([n, b]) => [place(i)(n), b])
     );
 

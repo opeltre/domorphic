@@ -23,7 +23,8 @@ IO.document = () => DOM();
 //.node : dom(m) -> m -> Node
 IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
 
-/*------ Output ------
+
+/*------ Output Stream ------
     
     This section pushes morphisms to model-dependent DOM operations,
     all methods having the following type: 
@@ -43,52 +44,62 @@ IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
         - as a CSS selector to query the DOM.
 */ 
 
-IO.put = (node, k) => m => {
-    let io = IO(),
-        data = dom.tree(node)(m),
-        key = k || data[0].put,
-        n = DOM.tree(data, io);
-    return io.select(key)
-        .push(n0 => n0.appendChild(n))
-        .return(m);
-}
+let trees = node => m => 
+    node._domInstance === 'map'
+        ? dom.trees(node)(m)
+        : [dom.tree(node)(m)];
 
-//.replace : dom(m) -> m -> IO(a)
-IO.replace = (node, k) => m => {
-    let io = IO(),
-        data = dom.tree(node)(m),
-        key = k || data[0].place;
-    io.select(key);
-    let n1 = DOM.tree(data, io);
-    return io.push(n0 => n0.replaceWith(n1))
-        .return(m);
-}
+IO.put = node => m => 
+    trees(node)(m).reduce(
+        (io, d) => io
+            .select(d[0].put)
+            .push(n => n.appendChild(DOM.tree(d, io))),
+        IO()
+    ).return(m);
 
-//.set : dom(m) -> m -> IO(a)
-IO.set = (node, k) => m => {
-    let io = IO(),
-        data = node.data(m),
-        key = k || data.place;
-    return io.select(key)
-        .push(n => DOM.set(n, data))
-        .return(m);
-};
+IO.place = node => m => 
+    trees(node)(m).reduce(
+        (io, d) => io
+            .select(d[0].place)
+            .push(n => [n, DOM.tree(d, io)])
+            .bind(([n0, n1]) => n0 
+                ? IO().do(_ => n0.replaceWith(n1))
+                : IO().select(d[0].put)
+                    .do(n => n.appendChild(n1))
+            ),
+        IO()
+    ).return(m);
 
-IO.remove = (node) => m => {
-    let io = IO(); 
-        key = typeof k === 'string' ? k : node.data(m).place;
-    return io.select(key)
-        .do(n => n.remove())
-        .do(n => remove(io, key))
-        .return(m);
-};
+IO.replace = node => m => 
+    trees(node)(m).reduce(
+        (io, d) => io
+            .select(d[0].place)
+            .push(n => n.replaceWith(DOM.tree(d, io))),
+        IO()
+    ).return(m);
 
-IO.place = (node) => m => {
-    let io = IO(),
-        place = node.data(m).place
-    return io.select(place)
-        .bind(n => n ? IO.replace(node)(m) : IO.put(node)(m));
-};
+let data = node => m => 
+    node._domInstance === 'map'
+        ? dom.data(node)(m)
+        : [dom.data(node)(m)];
+
+IO.set = node => m => 
+    data(node)(m).reduce(
+        (io, d) => io
+            .select(d[0].place)
+            .push(n => DOM.set(n, data)),
+        IO()
+    ).return(m);
+
+
+IO.remove = node => m => 
+    data(node)(m).reduce(
+        (io, d) => io
+            .select(d[0].place)
+            .do(n => n.remove())
+            .do(n => remove(io, d[0].place)),
+        IO()
+    ).return(m);
 
 //------ IO(e) ------
 
