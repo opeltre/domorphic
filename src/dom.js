@@ -66,7 +66,7 @@ function dom (t, a, b) {
     my.tree = dom.tree(my);
 
     //.data : m -> data 
-    my.data = data.apply(_r.without('branch', 'model')(self));
+    my.data = M => data.apply(_r.without('branch', 'pull')(self))(M);
     
     //.append : () -> ()
     my.append = (...bs) => {

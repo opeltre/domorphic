@@ -1,6 +1,9 @@
+module.exports = IO; 
+
 let __ = require('lolo'),
+    dom = require('./dom'),
     tree = require('./tree'),
-    dom = require('./dom');
+    DOM = require('./DOM');
 
 let _r = __.r;
 
@@ -9,24 +12,24 @@ let _r = __.r;
     Promise-emulated IO streams. 
 */ 
 
-module.exports = IO; 
-
 //.return : a -> IO(a)
 IO.return = y => IO(Promise.resolve(y));
 
 //.bind : IO(a) -> (a -> IO(b)) -> IO(b)
 IO.bind = io => iof => io.bind(iof);
 
+IO.document = () => DOM();
+
 //.node : dom(m) -> m -> Node
 IO.node = node =>  
-    __.pipe(dom.tree(node), Node);
+    __.pipe(dom.tree(node), DOM.tree);
 
 //.put : dom(m) -> m -> IO(a)
 IO.put = (node, k) => m => {
     let io = IO(),
         data = dom.tree(node)(m),
         key = k || data[0].put,
-        n = Node(data, io);
+        n = DOM.tree(data, io);
     return io.select(key)
         .push(n0 => n0.appendChild(n));
 }
@@ -37,7 +40,7 @@ IO.replace = (node, k) => m => {
         data = dom.tree(node)(m),
         key = k || data[0].place;
     io.select(key);
-    let n1 = Node(data, io);
+    let n1 = DOM.tree(data, io);
     return io.push(n0 => n0.replaceWith(n1));
 }
 
@@ -47,7 +50,7 @@ IO.set = (node, k) => m => {
         data = node.data(m),
         key = k || data.place;
     return io.select(key)
-        .push(n => Node.set(n, data));
+        .push(n => DOM.set(n, data));
 };
 
 //------ IO(e) ------
@@ -164,87 +167,3 @@ function getNode (stack, k) {
         stack[k] = null;
     return n && n.parentNode ? n : null;
 };
-
-
-//------ DOM Node ------
-
-//  Node : Tree(Data) -> T(Node)
-function Node (td, io=IO()) {
-    let tn = tree.map(d => Node.unit(d, io))(td);
-    return tree.nat(Node.link)(tn);
-}
-
-//  .link : (Node -> [T(Node)]) -> T(Node)
-Node.link = 
-    (N, B) => {
-        B.forEach(Ni => N.appendChild(Ni));
-        return N;
-    };
-
-//  .unit : (Data, IO e) -> Node
-Node.unit = (D, io=IO()) => { 
-
-    let N = D.svg
-        ? io.doc.createElementNS(SVG.NS, D.tag)
-        : io.doc.createElement(D.tag);
-
-    D.tag === 'svg' && SVG(N);
-    Node.set(N, D); 
-
-    let addListener = 
-        (v, k) => N.addEventListener(k, __.bindr(io)(v));
-    _r.forEach(addListener)(D.on);
-
-    D.place && io.keep(D.place, N);
-    return N;
-}
-
-Node.set = (n, d) => {
-    _r.assign(d.style)(n.style);
-    _r.forEach((v, k) => n[k] = v)(d.prop);
-    _r.forEach(Node.setAttribute(n))(d.attr);
-    n.classname = d.class;
-    n.innerHTML = d.html;
-    n.value = d.value;
-    return n;
-}
-
-Node.setAttribute = n => (v, k) => 
-    n instanceof SVGElement 
-        ? n.setAttributeNS(null, k, v)
-        : n.setAttribute(k, v);
-
-//------ SVG ------
-
-function SVG (node) {
-    node.setAttributeNS(
-        "http://www.w3.org/2000/xmlns/", 
-        "xmlns:xlink", 
-        "http://www.w3.org/1999/xlink"
-    );
-}
-
-SVG.NS = "http://www.w3.org/2000/svg";
-
-//------ Document ------
-
-IO.document = function () {
-    //--- Browser ---
-    if (typeof window !== 'undefined')
-        return window.document;
-    //--- Mock ---
-    function createElement (tag) {
-        let my = {tag, branch: []};
-        my.appendChild = elem => my.branch.push(elem);
-        my.setAttribute = __.null;
-        my.setAttributeNS = __.null;
-        my.addEventListener = __.null;
-        my.remove = __.null;
-        my.replaceWith = __.null;
-        return my;
-    };
-    return {
-        createElement, 
-        createElementNS: (_, tag) => createElement(tag)
-    };
-}
