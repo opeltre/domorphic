@@ -24,14 +24,34 @@ IO.document = () => DOM();
 IO.node = node =>  
     __.pipe(dom.tree(node), DOM.tree);
 
-//.put : dom(m) -> m -> IO(a)
+/*------ Output ------
+    
+    This section pushes morphisms to model-dependent DOM operations,
+    all methods having the following type: 
+
+        IO.act : dom(m) -> m -> IO(m)
+
+    They may then be bound to any active IO stream, which is equivalent 
+    to calling the IO instance's method of the same name. 
+        
+        io.bind(m => IO.act(node)) 
+    <=> io.act(node)
+
+    The optional second argument `string` in `IO.act(node, string)` is 
+    used either: 
+        - to override `node.place` or `node.put` if `string` 
+        points to a node IO stream's stack,
+        - as a CSS selector to query the DOM.
+*/ 
+
 IO.put = (node, k) => m => {
     let io = IO(),
         data = dom.tree(node)(m),
         key = k || data[0].put,
         n = DOM.tree(data, io);
     return io.select(key)
-        .push(n0 => n0.appendChild(n));
+        .push(n0 => n0.appendChild(n))
+        .return(m);
 }
 
 //.replace : dom(m) -> m -> IO(a)
@@ -41,7 +61,8 @@ IO.replace = (node, k) => m => {
         key = k || data[0].place;
     io.select(key);
     let n1 = DOM.tree(data, io);
-    return io.push(n0 => n0.replaceWith(n1));
+    return io.push(n0 => n0.replaceWith(n1))
+        .return(m);
 }
 
 //.set : dom(m) -> m -> IO(a)
@@ -50,7 +71,24 @@ IO.set = (node, k) => m => {
         data = node.data(m),
         key = k || data.place;
     return io.select(key)
-        .push(n => DOM.set(n, data));
+        .push(n => DOM.set(n, data))
+        .return(m);
+};
+
+IO.remove = (node) => m => {
+    let io = IO(); 
+        key = typeof k === 'string' ? k : node.data(m).place;
+    return io.select(key)
+        .do(n => n.remove())
+        .do(n => remove(io, key))
+        .return(m);
+};
+
+IO.place = (node, k) => m => {
+    let io = IO(),
+        place = node.data(m).place
+    return io.select(place)
+        .bind(n => n ? IO.replace(node)(m) : IO.put(node)(m));
 };
 
 //------ IO(e) ------
@@ -60,42 +98,33 @@ let closed = __.logs('- io closed -');
 function IO (doc) {
 
     let my = {},
-        awaits = closed,
-        bound_io = null;
+        awaits = closed;
 
-    my.promise = Promise.resolve();
     my.doc = doc || IO.document();
-    //.stack : {Node} 
-    my.stack = {};
+    my.promise = Promise.resolve();
+
+    //._bound_io :  IO e
+    my._bound_io =  null;
+    //.stack :      {Node} 
+    my.stack =      {};
     
     //--- Monad ---
+
+    my.return = y => my.push(() => y)
+
+    my.bind = iof => 
+        my.push(x => {
+            let iob = bind(my, iof(x));
+            return iob.promise
+                .then(x => {unbind(my, iob); return x});
+        });
 
     my.push = f => {
         my.promise = my.promise.then(f)
         return my;
     };
-
-    my.return = y => my.push(() => y)
-
-    let bind = iob => {
-        bound_io = iob; 
-        iob.stack = my.stack;
-        iob.doc = my.doc;
-        return iob;
-    };
-    let unbind = iob => x => {
-        bound_io = null;
-        my.stack = iob.stack;
-        _r.assign(my)(iob);
-        return x
-    };
-
-    my.bind = iof => my.push(x => {
-        let iob = bind(iof(x));
-        return iob.promise.then(unbind(iob));
-    });
-
     my.then = my.push;
+
     my.do = f => my.push(x => {f(x); return x});
 
     //--- Input Stream ---
@@ -111,44 +140,29 @@ function IO (doc) {
     my.await = () => my.push(() => ({then: wait}));
 
     my.send = (...xs) => {
-        if (bound_io)
-            return bound_io.send(...xs);
+        if (my._bound_io)
+            return my._bound_io.send(...xs);
         awaits(...xs)
         return my;
     };
 
     //--- Output Stream ---
 
-    my.append = (k, n) => 
-        my.select(k).do(p => p && p.appendChild(n));
+    my.set = (n, k) => my.bind(IO.set(n, k));
 
-    my.replace = (k, n) => 
-        my.select(k).do(n0 => __.logs('replacing:')(n0) && n0.replaceWith(n));
+    my.put = (n, k) => my.bind(IO.put(n, k));
 
-    my.remove = (k) => 
-        my.select(k).do(n => n && n.remove());
+    my.place = (n, k) => my.bind(IO.replace(n, k));
 
-    //--- Node Register --- 
+    my.replace = (n, k) => my.bind(IO.replace(n, k));
+
+    my.remove = (n, k) => my.bind(IO.remove(n, k));
+
+    //--- Node Stack --- 
     
-    let select = k => typeof k === 'string' 
-        ? (my.stack[k] || my.doc.querySelector(k))
-        : (Array.isArray(k) 
-            ? my.stack[k[0]][k[1]]
-            : k
-        );
+    my.select = k => my.push(() => select(my, k));
 
-    let keep = (k, n) => typeof k === 'string'
-        ? my.stack[k] = n
-        : my.stack[k[0]][k[1]] = n;
-
-    my.select = k => 
-        my.push(() => select(k))
-            .push(n => {if (n) {return n} throw new Error('IO Error')})
-//            .catch(__.logs(`IO Error: empty selection ${k}`));
-
-    my.keep = (k, n) => 
-        my.do(() => keep(k, n))
-//          .catch(__.logs(`IO Error: cannot access location ${k}`))
+    my.keep = (k, n) => my.do(() => keep(my, k, n))
     
     //--- IO Errors ---
     my.catch = f => {
@@ -159,11 +173,52 @@ function IO (doc) {
     return my;
 }
 
-//------ Node Register ------
 
-function getNode (stack, k) {
-    let n = stack[k]
-    if (n && !n.parentNode)
-        stack[k] = null;
-    return n && n.parentNode ? n : null;
-};
+//------ Node Stack ------
+
+function keep (io, k, n, strict=true) {
+    if (typeof k === 'string')
+        io.stack[k] = n;
+    else if (Array.isArray(k) && io.stack[k[0]])
+        io.stack[k[0]][k[1]] = n;
+    return io;
+}
+
+function remove (io, k) {
+    if (typeof k === 'string') 
+        delete io.stack[k]
+    else if (Array.isArray(k) && io.stack[k[0]])
+        delete io.stack[k[0]][k[1]];
+    return io;
+}
+
+function select (io, k, strict=true) {
+    let n = null;
+    if (typeof k === 'string') 
+        n = (io.stack[k] || io.doc.querySelector(k));
+    else if (Array.isArray(k) && io.stack[k[0]])
+        n = io.stack[k[0]][k[1]];
+
+    if ((n instanceof Node && n.parentNode)|| !strict) 
+        return n; 
+    if (strict) 
+        throw new Error(`IO Error: Empty or orphaned selection ${k}`)
+}
+
+
+//------ Bindings ------
+
+function bind (ioa, iob) {
+    ioa._bound_io = iob; 
+    iob.stack = ioa.stack;
+    iob.doc = ioa.doc;
+    return iob;
+}
+
+function unbind (ioa, iob) {
+    ioa._bound_io = null;
+    ioa.stack = iob.stack;
+    _r.assign(ioa)(iob);
+    iob = ioa;
+    return ioa;
+}
