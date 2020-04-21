@@ -15,17 +15,17 @@ dom.apply =
 
 // .tree : dom(m) -> m -> tree(data)
 dom.tree = 
-    t => M => {
+    t => M0 => {
         if (t._domInstance === 'pullback')
-            return t.tree(M);
-        let _M = t.pull()(M),
-            node = t.data(_M),
-            branch = dom.apply(t.branch())(_M);
+            return t.tree(M0);
+        let M1 = t.pull()(M0),
+            node = data.apply(t.node())(M1),
+            branch = dom.apply(t.branch())(M1);
         return data.link(
             node, 
             branch._domInstance === 'map'
-                ? branch.trees(_M)
-                : branch.map(ti => ti.tree(_M))
+                ? branch.trees(M1)
+                : branch.map(ti => ti.tree(M1))
         );
     };
 
@@ -65,9 +65,12 @@ function dom (t, a, b) {
     //.tree : m -> tree(data)
     my.tree = dom.tree(my);
 
+    //.node : m -> data(m)
+    my.node = () => _r.without('branch', 'pull')(self);
+
     //.data : m -> data 
-    my.data = M => data.apply(_r.without('branch', 'pull')(self))(M);
-    
+    my.data = M => __(self.pull, data.apply(my.node()))(M);
+
     //.append : () -> ()
     my.append = (...bs) => {
         self.branch = [...self.branch, ...bs];
@@ -107,29 +110,29 @@ dom.map = function (node, pull) {
     };
    
     //  my : m -> [node] 
-    let my = __(
+    let my = M => __(
         self.pull,
         __.map((mi, i) => IO.node(self.node)(mi))
-    );
+    )(M);
 
     //        : num -> data -> data
     let place = i =>  
         _r.streamline({place: D => [D.place, i]});
 
     //.trees : m -> [tree(data)]
-    my.trees = __(
+    my.trees = M => __(
         self.pull, 
         __.map(mi => self.node.tree(mi)),
         __.map(([n, b], i) => [place(i)(n), b])
-    );
+    )(M);
 
-    my.data = __(
+    my.data = M => __(
         self.pull,
         __.map(mi => self.node.data(mi)),
-        __.map(([n, b]) => [place(i)(n), b])
-    );
+        __.map((d, i) => place(i)(d))
+    )(M);
 
-    _r.assign(_r.without('pull', 'data', '_domInstance')(node))(my);
+    _r.assign(_r.without('pull', 'data', 'node', '_domInstance')(node))(my);
     my._domInstance = 'map';
     return __.getset(my, self);
 }

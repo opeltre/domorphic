@@ -33,9 +33,8 @@ DOM.unit = (D, io=IO()) => {
         (v, k) => N.addEventListener(k, __.bindr(io)(v));
     _r.forEach(addListener)(D.on);
 
-    __.log(D.place);
-    __.logs('io:')(io.stack);
     D.place && io.keep(D.place, N);
+    D.place && __.logs(`placed ${D.place}`)(io.stack)
     return N;
 }
 

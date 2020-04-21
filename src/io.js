@@ -80,14 +80,14 @@ IO.replace = node => m =>
 
 let data = node => m => 
     node._domInstance === 'map'
-        ? dom.data(node)(m)
-        : [dom.data(node)(m)];
+        ? node.data(m)
+        : [node.data(m)];
 
 IO.set = node => m => 
     data(node)(m).reduce(
         (io, d) => io
-            .select(d[0].place)
-            .push(n => DOM.set(n, data)),
+            .select(d.place)
+            .push(n => DOM.set(n, d)),
         IO()
     ).return(m);
 
@@ -95,9 +95,9 @@ IO.set = node => m =>
 IO.remove = node => m => 
     data(node)(m).reduce(
         (io, d) => io
-            .select(d[0].place)
+            .select(d.place)
             .do(n => n.remove())
-            .do(n => remove(io, d[0].place)),
+            .do(n => remove(io, d.place)),
         IO()
     ).return(m);
 
@@ -156,6 +156,8 @@ function IO (doc) {
         return my;
     };
 
+    my.sleep = secs => my.push(x => __.sleep(1000 * secs).then(() => x));
+
     //--- Output Stream ---
 
     my.set = (n, k) => my.bind(IO.set(n, k));
@@ -189,8 +191,11 @@ function IO (doc) {
 function keep (io, k, n, strict=true) {
     if (typeof k === 'string')
         io.stack[k] = n;
-    else if (Array.isArray(k) && io.stack[k[0]])
+    else if (Array.isArray(k)) {
+        if (!io.stack[k[0]])
+            io.stack[k[0]] = [];
         io.stack[k[0]][k[1]] = n;
+    }
     return io;
 }
 
