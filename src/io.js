@@ -13,11 +13,15 @@ let _r = __.r;
 */ 
 
 //.return : a -> IO(a)
-IO.return = y => IO(Promise.resolve(y));
+IO.return = y => IO(() => y);
 
 //.bind : IO(a) -> (a -> IO(b)) -> IO(b)
 IO.bind = io => iof => io.bind(iof);
 
+//.push : IO(a) -> (a -> b) -> IO(b)
+IO.push = io => f => io.push(f);
+
+//.document : () -> document
 IO.document = () => DOM();
 
 //.node : dom(m) -> m -> Node
@@ -44,64 +48,94 @@ IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
         - as a CSS selector to query the DOM.
 */ 
 
-let trees = node => m => 
-    node._domInstance === 'map'
-        ? dom.trees(node)(m)
-        : [dom.tree(node)(m)];
+IO.put = (node, k) => m => {
+    let io = IO(),
+        data = dom.tree(node)(m),
+        key = k || data[0].put,
+        n = DOM.tree(data, io);
+    return io.select(key)
+        .push(n0 => n0.appendChild(n))
+        .return(m);
+}
 
-IO.put = node => m => 
-    trees(node)(m).reduce(
-        (io, d) => io
-            .select(d[0].put)
-            .push(n => n.appendChild(DOM.tree(d, io))),
-        IO()
-    ).return(m);
+IO.set = (node, k) => m => {
+    let io = IO(),
+        data = node.data(m),
+        key = k || data.place;
+    return io.select(key)
+        .push(n => DOM.set(n, data))
+        .return(m);
+};
 
-IO.place = node => m => 
-    trees(node)(m).reduce(
-        (io, d) => io
-            .select(d[0].place)
-            .push(n => [n, DOM.tree(d, io)])
-            .bind(([n0, n1]) => n0 
-                ? IO().do(_ => n0.replaceWith(n1))
-                : IO().select(d[0].put)
-                    .do(n => n.appendChild(n1))
-            ),
-        IO()
-    ).return(m);
+IO.place = (node, k) => m => {
+    let io = IO(),
+        place = node.data(m).place
+    return io.select(place)
+        .bind(n => n ? IO.replace(node)(m) : IO.put(node)(m));
+};
 
-IO.replace = node => m => 
-    trees(node)(m).reduce(
-        (io, d) => io
-            .select(d[0].place)
-            .push(n => n.replaceWith(DOM.tree(d, io))),
-        IO()
-    ).return(m);
+IO.replace = (node, k) => m => {
+    let io = IO(),
+        data = dom.tree(node)(m),
+        key = k || data[0].place;
+    io.select(key);
+    let n1 = DOM.tree(data, io);
+    return io.push(n0 => n0.replaceWith(n1))
+        .return(m);
+}
 
-let data = node => m => 
-    node._domInstance === 'map'
-        ? node.data(m)
-        : [node.data(m)];
+IO.remove = (node) => m => {
+    let io = IO(); 
+        key = typeof k === 'string' ? k : node.data(m).place;
+    return io.select(key)
+        .do(n => n.remove())
+        .do(n => remove(io, key))
+        .return(m);
+};
 
-IO.set = node => m => 
-    data(node)(m).reduce(
-        (io, d) => io
-            .select(d.place)
-            .push(n => DOM.set(n, d)),
-        IO()
-    ).return(m);
+/*------ IO instances ------
 
+    IO streams are "alive" instances, in that they hold an
+    internal state together with a running promise chain 
+    whose execution starts upon creation. 
 
-IO.remove = node => m => 
-    data(node)(m).reduce(
-        (io, d) => io
-            .select(d.place)
-            .do(n => n.remove())
-            .do(n => remove(io, d.place)),
-        IO()
-    ).return(m);
+    Each stream keeps its own stack of registered DOM nodes: 
 
-//------ IO(e) ------
+        io.stack : {Node, [Node], {Node}} 
+    
+    References are kept whenever the node constructor specifies 
+    a `place` attribute, used as key, so that the associated 
+    DOM node will be accessible for later IO operations. 
+    
+    Further operations may either be chained by: 
+        - calling the instance's methods,
+        - binding maps returning IO streams, e.g. class methods. 
+
+    For instance: 
+        io.return(12)
+    <=> io.bind(() => IO.return(12))
+
+    When binding instances, the stack of the parent IO stream 
+    is passed on when spawning the child stream and recovered*
+    as soon as the latter returns, in a possibly altered state.  
+
+    Therefore keeping multiple references to a running IO stream 
+    is unneccesary, and could only be done once: one may instead 
+    focus on defining which operations should take place upon 
+    events to close the loop! 
+
+        //  update  : e -> s -> [IO e, s] 
+        //  main    : e -> s -> IO e
+
+        let main = e0 => s0 => {
+            let [io, s1] = update(e0)(s0);
+            return io.bind(e1 => main(e1)(s1));
+        }
+        
+        //  io : IO e 
+        let io = main('start')(':D');
+
+*///-------------------------
 
 let closed = __.logs('- io closed -');
 
@@ -113,27 +147,23 @@ function IO (doc) {
     my.doc = doc || IO.document();
     my.promise = Promise.resolve();
 
-    //._bound_io :  IO e
     my._bound_io =  null;
-    //.stack :      {Node} 
     my.stack =      {};
     
     //--- Monad ---
 
     my.return = y => my.push(() => y)
 
-    my.bind = iof => 
-        my.push(x => {
+    my.bind = iof => my
+        .push(x => {
             let iob = bind(my, iof(x));
-            return iob.promise
-                .then(x => {unbind(my, iob); return x});
+            return iob.do(() => unbind(my, iob)).promise
         });
 
     my.push = f => {
         my.promise = my.promise.then(f)
         return my;
     };
-    my.then = my.push;
 
     my.do = f => my.push(x => {f(x); return x});
 
@@ -160,22 +190,17 @@ function IO (doc) {
 
     //--- Output Stream ---
 
-    my.set = (n, k) => my.bind(IO.set(n, k));
-
-    my.put = (n, k) => my.bind(IO.put(n, k));
-
-    my.place = (n, k) => my.bind(IO.replace(n, k));
-
-    my.replace = (n, k) => my.bind(IO.replace(n, k));
-
-    my.remove = (n, k) => my.bind(IO.remove(n, k));
+    my.put = (...args) => my.bind(IO.put(...args));
+    my.set = (...args) => my.bind(IO.set(...args));
+    my.place = (...args) => my.bind(IO.replace(...args));
+    my.replace = (...args) => my.bind(IO.replace(...args));
+    my.remove = (...args) => my.bind(IO.remove(...args));
 
     //--- Node Stack --- 
     
+    my.keep = (k, n) => my.do(() => keep(my, k, n))
     my.select = k => my.push(() => select(my, k));
 
-    my.keep = (k, n) => my.do(() => keep(my, k, n))
-    
     //--- IO Errors ---
     my.catch = f => {
         my.promise = my.promise.catch(f);
@@ -199,14 +224,6 @@ function keep (io, k, n, strict=true) {
     return io;
 }
 
-function remove (io, k) {
-    if (typeof k === 'string') 
-        delete io.stack[k]
-    else if (Array.isArray(k) && io.stack[k[0]])
-        delete io.stack[k[0]][k[1]];
-    return io;
-}
-
 function select (io, k, strict=true) {
     let n = null;
     if (typeof k === 'string') 
@@ -220,6 +237,13 @@ function select (io, k, strict=true) {
         throw new Error(`IO Error: Empty or orphaned selection ${k}`)
 }
 
+function remove (io, k) {
+    if (typeof k === 'string') 
+        delete io.stack[k]
+    else if (Array.isArray(k) && io.stack[k[0]])
+        delete io.stack[k[0]][k[1]];
+    return io;
+}
 
 //------ Bindings ------
 
