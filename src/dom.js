@@ -59,8 +59,8 @@ function dom (t, a, b) {
     //  my : m -> node
     let my = m => IO.node(my)(m);
    
-    //.io : m -> IO(e)
-    my.io = M => IO.put(my)(M).await();
+    //.io : (act, key) -> m -> IO(e)
+    my.io = (act, key) => M => IO[act](my, key)(M).await();
 
     //.tree : m -> tree(data)
     my.tree = dom.tree(my);
