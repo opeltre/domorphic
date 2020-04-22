@@ -18,6 +18,8 @@ dom.tree =
     t => M0 => {
         if (t._domInstance === 'pullback')
             return t.tree(M0);
+        if (t._domInstance === 'pushforward')
+            return t.tree(M0);
         let M1 = t.pull()(M0),
             node = data.apply(t.node())(M1),
             branch = dom.apply(t.branch())(M1);
@@ -28,6 +30,26 @@ dom.tree =
                 : branch.map(ti => ti.tree(M1))
         );
     };
+
+// .pull: (m -> m') -> dom(m') -> dom(m)
+dom.pull = 
+    g => node => {
+        let my = m => node(g(m));
+        my.tree = m => node.tree(g(m));
+        my.data = m => node.data(g(m));
+        my._domInstance = "pullback"
+        return my;
+    };
+
+// .push : (tree(data) -> tree(data)) -> dom(m) -> dom(m) 
+dom.push = 
+    f => node => {
+        let my = m => IO.node(my)(m);
+        my.tree = m => f(node.tree(m)); 
+        my.data = m => f([node.data(m), []])[0];
+        my._domInstance = "pushforward";
+        return my;
+    }
 
 
 //------ dom(m) :: m -> node ------
@@ -59,8 +81,8 @@ function dom (t, a, b) {
     //  my : m -> node
     let my = m => IO.node(my)(m);
    
-    //.io : (act, key) -> m -> IO(e)
-    my.io = (act, key) => M => IO[act](my, key)(M).await();
+    //.IO : (act, key) -> m -> IO(e)
+    my.IO = (act, key) => M => IO[act](my, key)(M);
 
     //.tree : m -> tree(data)
     my.tree = dom.tree(my);
@@ -81,58 +103,56 @@ function dom (t, a, b) {
     my.map = pull => dom.map(my, pull);
 
     my._domInstance = 'node';
+
     let records = ['on', 'attr', 'style'];
     return __.getset(my, self, {records});
 }
 
-
-//------ pull: (m -> m') -> dom(m') -> dom(m) ------
-
-dom.pull = function (g) {
-    return node_b => {
-        let my = m => node_b(g(m));
-        my.tree = m => node_b.tree(g(m));
-        my._domInstance = "pullback"
-        return my;
-    };
-};
 
 
 //------ map: (m -> Node) -> [m] -> [Node] ------
 
 dom.map = function (node, pull) {
     
-    //  node :  dom(m')
-    //  pull : m -> [m'] 
     let self = {
         node :  node,
         pull : pull || __.id,
     };
-   
+
+    let push = i => dom.push(
+        ([d, ds]) => [
+            d.place ? _r.set('place', [`[${d.place}]`, i])(d) : d,
+            ds
+        ]
+    );
+    let get = i => dom.pull(ms => ms[i])
+
     //  my : m -> [node] 
     let my = M => __(
         self.pull,
-        __.map((mi, i) => IO.node(self.node)(mi))
+        __.map((mi, i) => push(i)(self.node)(mi))
     )(M);
+    
+    //.getNode : int -> [m'] -> node  
+    my.getNode = i => __(push(i), get(i))(self.node);
 
-    //        : num -> data -> data
-    let place = i =>  
-        _r.streamline({place: D => [D.place, i]});
+    //.IO : (act, [key] || m' -> bool) -> m -> IO(e)
+    my.IO = (act, filter) => IO
+        .map(my.getNode, my.pull())
+        .IO(act, filter);
 
     //.trees : m -> [tree(data)]
     my.trees = M => __(
         self.pull, 
-        __.map(mi => self.node.tree(mi)),
-        __.map(([n, b], i) => [place(i)(n), b])
+        __.map((mi, i) => push(i)(self.node).tree(mi)),
     )(M);
-
+    
+    //.data : m -> data 
     my.data = M => __(
         self.pull,
-        __.map(mi => self.node.data(mi)),
-        __.map((d, i) => place(i)(d))
+        __.map((mi, i) => push(i)(self.node).data(mi)),
     )(M);
 
-    _r.assign(_r.without('pull', 'data', 'node', '_domInstance')(node))(my);
     my._domInstance = 'map';
     return __.getset(my, self);
 }

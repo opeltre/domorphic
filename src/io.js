@@ -25,9 +25,6 @@ IO.push = io => f => io.push(f);
 //.document : () -> document
 IO.document = () => DOM();
 
-//.node : dom(m) -> m -> Node
-IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
-
 
 /*------ Output Stream ------
     
@@ -50,11 +47,14 @@ IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
 
 *///-------------------------
 
-IO.put = (node, k) => m => {
+//.node : dom(m) -> m -> Node
+IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
+
+IO.put = (node, k, place) => m => {
     let io = IO(),
         data = dom.tree(node)(m),
         key = k || data[0].put,
-        n = DOM.tree(data, io);
+        n = DOM.tree(data, io, place);
     return io.select(key)
         .push(n0 => n0.appendChild(n))
         .return(m);
@@ -71,9 +71,12 @@ IO.set = (node, k) => m => {
 
 IO.place = (node, k) => m => {
     let io = IO(),
-        place = node.data(m).place;
+        place = k || node.data(m).place;
     return io.select(place, strict=false)
-        .bind(n => n ? IO.replace(node)(m) : IO.put(node)(m));
+        .bind(n => n 
+            ? IO.replace(node, place)(m) 
+            : IO.put(node, 0, place)(m)
+        );
 };
 
 IO.replace = (node, k) => m => {
@@ -81,19 +84,56 @@ IO.replace = (node, k) => m => {
         data = dom.tree(node)(m),
         key = k || data[0].place;
     io.select(key);
-    let n1 = DOM.tree(data, io);
+    let n1 = DOM.tree(data, io, key);
     return io.push(n0 => n0.replaceWith(n1))
         .return(m);
 }
 
 IO.remove = (node) => m => {
     let io = IO(); 
-        key = typeof k === 'string' ? k : node.data(m).place;
+        key = node._domInstance ? node.data(m).place : node
     return io.select(key)
         .do(n => n.remove())
         .do(n => remove(io, key))
         .return(m);
 };
+/*---
+    This one chains operations for map nodes: 
+        //   : m -> IO (e) 
+        nodes.IO('put', [4, 5, 6])
+             .IO('replace', m => m.bool)
+             .IO('remove', [0, 2]);
+
+*///---
+IO.map = (node, pull) => {
+
+    let actions = [];
+    let keys = filter => typeof filter === 'function'
+        ? ms => ms
+            .map((mi, i) => filter(mi) ? i : false)
+            .filter(j => j !== false)
+        : ms => filter
+            .map(j => j % ms.length)
+            .map(j => j >= 0 ? j : j + ms.length);
+
+    let my = M => {
+        let ms = pull(M),
+            io = IO.return(ms);
+        let action = (io, [act, filter]) => 
+            keys(filter)(ms).reduce(
+                (io, j) => io.bind(() => IO[act](node(j), false)(ms)),
+                io
+            );
+        return actions.reduce((io, a) => action(io, a), io);
+    };
+
+    my.IO = (act, filter) => {
+        actions.push([act, filter || (() => true)]);
+        return my;
+    }
+
+    return my;
+}
 
 /*------ IO instances ------
 
