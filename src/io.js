@@ -10,7 +10,8 @@ let _r = __.r;
 /*------ IO Monad ------ 
 
     Promise-emulated IO streams. 
-*/ 
+
+*///-------------------- 
 
 //.return : a -> IO(a)
 IO.return = y => IO(() => y);
@@ -46,7 +47,8 @@ IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
         - to override `node.place` or `node.put` if `string` 
         points to a node IO stream's stack,
         - as a CSS selector to query the DOM.
-*/ 
+
+*///-------------------------
 
 IO.put = (node, k) => m => {
     let io = IO(),
@@ -69,8 +71,8 @@ IO.set = (node, k) => m => {
 
 IO.place = (node, k) => m => {
     let io = IO(),
-        place = node.data(m).place
-    return io.select(place)
+        place = node.data(m).place;
+    return io.select(place, strict=false)
         .bind(n => n ? IO.replace(node)(m) : IO.put(node)(m));
 };
 
@@ -135,7 +137,7 @@ IO.remove = (node) => m => {
         //  io : IO e 
         let io = main('start')(':D');
 
-*///-------------------------
+*///-----------------------
 
 let closed = __.logs('- io closed -');
 
@@ -189,7 +191,6 @@ function IO (doc) {
     my.sleep = secs => my.push(x => __.sleep(1000 * secs).then(() => x));
 
     //--- Output Stream ---
-
     my.put = (...args) => my.bind(IO.put(...args));
     my.set = (...args) => my.bind(IO.set(...args));
     my.place = (...args) => my.bind(IO.replace(...args));
@@ -197,7 +198,6 @@ function IO (doc) {
     my.remove = (...args) => my.bind(IO.remove(...args));
 
     //--- Node Stack --- 
-    
     my.keep = (k, n) => my.do(() => keep(my, k, n))
     my.select = k => my.push(() => select(my, k));
 
