@@ -46,38 +46,40 @@ function App (updates={}, hooks={}) {
 
     app.update = (e, ...xs) => {
         let update = updates[e],
-            hook = hooks[e];
+            hook = hooks[e] || [];
         if (hook);
             __.do(...hook)(...xs);
         return update
-            ? updates[e](state(), ...xs)
+            ? update(state(), ...xs)
                 .bind(app.continue)
-            : my.pass(state(), ...xs);
+            : app.pass(state(), ...xs);
     };
 
     app.continue = r => typeof[r] === 'string'
         ? app.update(r)
         : state().return(r);
 
-    my.on = (e, f) => {
+    app.on = (e, f) => {
         updates[e] = f;
-        return my;
+        return app;
     }
 
-    my.hook = (e, ...gs) => {
+    app.hook = (e, ...gs) => {
         hooks[e] = gs;
-        return my;
+        return app;
     }
     
-    my.pass = () => state().return(IO.return(0));
+    app.pass = () => state().return(IO.return(0));
 
-    app.main = (e0, m0) => {
-        let [io, m1] = app.update(...e1).run(m0);
+    app.main = (...e0) => m0 => {
+        let [io, m1] = app.update(...e0).run(m0);
         return io.await()
-            .bind(e1 => main(e1, m1));
+            .bind(e1 => app.main(...e1)(m1));
     };
 
-    app.start = m0 => app.main('start', m0);
+    app.start = m0 => app.main('start')(m0);
 
     return app;
 }
+
+module.exports = App;
