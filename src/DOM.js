@@ -34,7 +34,6 @@ DOM.unit = (D, io=IO()) => {
     _r.forEach(addListener)(D.on);
 
     D.place && io.keep(D.place, N);
-    D.place && __.logs(`placed ${D.place}`)(io.stack)
     return N;
 }
 

@@ -81,9 +81,6 @@ function dom (t, a, b) {
     //  my : m -> node
     let my = m => IO.node(my)(m);
    
-    //.IO : (act, key) -> m -> IO(e)
-    my.IO = (act, key) => M => IO[act](my, key)(M);
-
     //.tree : m -> tree(data)
     my.tree = dom.tree(my);
 
@@ -133,13 +130,8 @@ dom.map = function (node, pull) {
         __.map((mi, i) => push(i)(self.node)(mi))
     )(M);
     
-    //.getNode : int -> [m'] -> node  
-    my.getNode = i => __(push(i), get(i))(self.node);
-
-    //.IO : (act, [key] || m' -> bool) -> m -> IO(e)
-    my.IO = (act, filter) => IO
-        .map(my.getNode, my.pull())
-        .IO(act, filter);
+    //.get : int -> [m'] -> node  
+    my.get = i => __(push(i), get(i))(self.node);
 
     //.trees : m -> [tree(data)]
     my.trees = M => __(

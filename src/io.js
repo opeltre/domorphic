@@ -14,7 +14,7 @@ let _r = __.r;
 *///-------------------- 
 
 //.return : a -> IO(a)
-IO.return = y => IO(() => y);
+IO.return = y => IO().push(() => y);
 
 //.bind : IO(a) -> (a -> IO(b)) -> IO(b)
 IO.bind = io => iof => io.bind(iof);
@@ -128,13 +128,18 @@ IO.remove = (node) => m => {
             ...
 *///---
 
-let keys = filter => typeof filter === 'function'
-    ? ms => ms
-        .map((mi, i) => filter(mi) ? i : false)
-        .filter(j => j !== false)
-    : ms => filter
-        .map(j => j % ms.length)
-        .map(j => j >= 0 ? j : j + ms.length);
+let keys = filter => ms => {
+    if (typeof filter === 'undefined')
+        return ms.map((mi, i) => i);
+    if (typeof filter === 'function') 
+        return ms
+            .map((mi, i) => filter(mi) ? i : false)
+            .filter(j => j !== false);
+    else 
+        return filter
+            .map(j => j % ms.length)
+            .map(j => j >= 0 ? j : j + ms.length);
+}
 
 IO.map = (node, pull) => IO.with(dom.map(node, pull));
 
