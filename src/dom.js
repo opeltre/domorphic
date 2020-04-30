@@ -56,7 +56,7 @@ dom.push =
 
 function dom (t, a, b) {
         
-    let {tag, attr, branch, html} = parse.args(t, a, b);
+    let {tag, attr, branch, other} = parse.args(t, a, b);
 
     let self = {
         // node 
@@ -66,7 +66,7 @@ function dom (t, a, b) {
         prop:       {},
         style:      {},
         on:         {},
-        html:       html || '',
+        html:       '',
         value:      '',
         class:      '',
         // branches
@@ -77,7 +77,10 @@ function dom (t, a, b) {
         put:        'body',
         place:      null 
     };
-    
+   
+    __.logs('other:')(other);
+    Object.assign(self, other); 
+
     //  my : m -> node
     let my = m => IO.node(my)(m);
    
