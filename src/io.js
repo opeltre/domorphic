@@ -53,7 +53,7 @@ IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
 IO.put = (node, k, place) => m => {
     let io = IO(),
         data = dom.tree(node)(m),
-        key = __.logs('put:')(k || data[0].put),
+        key = k || data[0].put,
         n = DOM.tree(data, io, place);
     return io.select(key)
         .push(n0 => n0.appendChild(n))
@@ -244,7 +244,8 @@ let closed = __.logs('- io closed -');
 function IO (doc) {
 
     let my = {},
-        awaits = closed;
+        waiting = [],
+        queue = [];
 
     my.doc = doc || IO.document();
     my.promise = Promise.resolve();
@@ -271,21 +272,20 @@ function IO (doc) {
 
     //--- Input Stream ---
 
-    let wait = listener => {
-        awaits = xs => {
-            awaits = closed; 
-            return listener(xs);
-        }
-    };
+    let wait = f => queue.length
+        ? f(queue.shift())
+        : waiting.push(f) 
 
-    my.await = () => my.push(() => ({then: wait}));
+    my.await = () => my.push(xs => ({then: wait}));
 
     my.listen = f => my.push(__.xargs(f));
 
     my.send = x => {
         if (my._bound_io)
             return my._bound_io.send(x);
-        awaits(x)
+        waiting.length 
+            ? waiting.shift()(x)
+            : queue.push(x);  
         return my;
     };
 

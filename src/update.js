@@ -45,15 +45,19 @@ function App (updates={}, hooks={}) {
     let app = {};
 
     app.update = (e, ...xs) => {
-        let update = updates[e],
-            hook = hooks[e] || [];
-        if (hook);
-            __.do(...hook)(...xs);
+        let update = updates[e];
         return update
             ? update(state(), ...xs)
                 .bind(app.continue)
             : app.pass(state(), ...xs);
     };
+
+    app.hooked = (e, ...xs) => {
+        let hook = hooks[e];
+        return hook
+            ? hook(state(), ...xs)
+            : state().return(() => {});
+    }
 
     app.continue = r => typeof[r] === 'string'
         ? app.update(r)
@@ -64,16 +68,20 @@ function App (updates={}, hooks={}) {
         return app;
     }
 
-    app.hook = (e, ...gs) => {
-        hooks[e] = gs;
+    app.hook = (e, g) => {
+        hooks[e] = g;
         return app;
     }
     
     app.pass = () => state().return(IO.return(0));
 
     app.main = (...e0) => m0 => {
-        let [io, m1] = app.update(...e0).run(m0);
-        return io.await()
+        let [io, m1] = app.update(...e0).run(m0),
+            hook = app.hooked(...e0).eval(m0);
+
+        return io
+            .do(() => hook(m1))
+            .await()
             .bind(e1 => app.main(...e1)(m1));
     };
 
