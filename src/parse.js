@@ -22,9 +22,14 @@ Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
         
         if (id) 
             Object.assign(a, {id});
-
-        if (classes.length)
-            Object.assign(a, {class: (a.class || '') + classes.join(' ')});
+        
+        if (classes.length) {
+            let a_class = a.class, 
+                getClass = a_class 
+                    ?  M => __(a_class)(M) + ' ' + classes.join(' ')
+                    : classes.join(' ');
+            Object.assign(a, {class: getClass});
+        }
 
         let otherKeys = ['html', 'value', 'svg', 'style'];
         
