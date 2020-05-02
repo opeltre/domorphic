@@ -1,85 +1,167 @@
-[functor][https://ncatlab.org/nlab/show/functor#definition]
+# domorphic
 
-# Domorphic
+is a plain javascript program to interact with the DOM, 
+in a functional, reactive and keep-it-simple philosophy.
 
-A plain javascript program to interact with the DOM, 
-in a functional, reactive and KISS philosophy.
-
+```html
+<script src="https://cdn.jsdelivr.net/npm/domorphic@1.0.0/dist/dom.min.js"></script> 
+```
 Inspired by the power of [d3](http://github.com/d3)
 and the beauty of [elm](http://elm-lang.org),
 this library attempts to breed their many respective qualities,
-so that shaping DOM interfaces within js 
+so that shaping DOM interfaces in pure js 
 may become smooth and enjoyable again! 
 
-## Installation 
+## Usage 
 
-```sh
-curl https://raw.githubusercontent.com/opeltre/domorphic/master/bundle.js\
-    >> domorphic.js
-```
+It's all about the polymorphic type `a -> Node` 
+of functions returning DOM nodes. 
 
-## Morphisms 
+In scientific terms,
+this  is also called the _category of types above_ `Node`. 
+[What?](https://en.wikipedia.org/wiki/Category_theory)
 
-A domorphic instance is just a function returning a DOM node.
-That's it! 
+__Above the DOM__.
+A domorphic instance is just a function returning a DOM node. That's it! 
 ```js
 let node = dom('h1').html('Hello World:!')();
 ```
-At first glance, the library is hence little more 
-than a convenient way to parametrise functions from 
-a given input type to the DOM node type. 
-All node attributes are interpreted either as values 
-or data dependent functions, supplied by d3-like  
-chainable accessors. 
+At first glance, the library hence only helps you
+conveniently parametrise functions returning DOM nodes. 
+And you may very well do `document.body.appendChild` 
+or whatever you like with them. 
 
-In scientific terms, 
-this sets you to explore 
-the polymorphic type `a -> Node` 
-of programs returning `Node`. 
-
-The branching attribute itself may be interpreted
-as an `a -> [Node]` node array returning function:  
-
+__Syntax__. 
+The dom constructor parses arguments
+looking for the following pattern: 
 ```js
-//  m : [str]
-let m = ['cats', 'are', 'cute'];
+dom('tag#id.class', ?{...attrs}, m ?-> [...branches])
+```
+Each branch may be given either as a dom instance, 
+or as an array of arguments following the same pattern. 
 
-//  f : [str] -> Node
-let f = dom('div').branch(
-    m => m.map(
-        mi => dom('p').html(mi)
-    )
-);
+All view-related code is intended to be kept
+as light and readable as any other templating language. 
+Except it's javascript! 
 
-document.body.appendChild(f(m));
+__Attributes__.
+All node attributes are interpreted either as values 
+or as data dependent functions. 
 
-//N.B.  Sending `str -> Node` to `[str] -> [Node]` is best done 
-//      with map instances, see the equivalent example below :)
+You may supply them 
+by d3-like chainable accessors: 
+```js
+let a = dom('a')
+    .html("internet")
+    .attr('href', m => m.href)
+    .on('hover', () => alert("wooo"))
+```
+although the dom constructor also interprets this following equivalent
+syntax:
+
+```js 
+let a = dom('a', {
+    html: "internet",
+    href: m => m.href,
+    onhover: () => alert("wooo")),
+});
 ```
 
-Given a function `a -> b`, you may also 
-compose your instance `b -> Node`, 
+__Branches__.
+Nodes are essentially trees of DOM elements, i.e. 
+`Node = (Element, [Node])`.
+
+The branching attribute itself may be given 
+in `a -> [Node]`, as a node array returning function:
+
+```js
+//  m : [Str]
+let m = ['cats', 'are', 'cute'],
+
+//  p : Str -> Node
+let p = dom('p')
+    .html(m => m);
+
+//  div : [Str] -> Node
+let div = dom('div')
+    .branch(m => m.map(p));
+
+document.body.appendChild(div(m));
+```
+
+and the above produces the same output as:
+
+```js 
+//  div : () -> Node
+let div = dom('div', [
+    ['p', {html: "cats"}],
+    ['p', {html: "are"}],
+    ['p', {html: "cute"}]
+]);
+
+document.body.appendChild(div());
+```
+
+## Functors 
+
+In the category of types, a
+[functor](https://ncatlab.org/nlab/show/functor#definition) `T`:
+- assigns to every type `a` a type `T a`,
+- transforms any map `a -> b` to a map `T a -> T b`. 
+
+Because dom instances are [pure](https://en.wikipedia.org/wiki/Pure_function) 
+functions, it is perfectly safe to pipe them into functorial transformations. 
+
+__Pullbacks__. 
+Given a function `a -> b`, precompose your `b -> Node` instance 
 to get an `a -> Node` map: 
 ```
-pull : (a -> b) -> (b -> Node) -> (a -> Node)  
+dom.pull : (a -> b) -> (b -> Node) -> (a -> Node)  
 ```
 However esoteric, you're looking at
-the _contravariant [hom-functor](https://en.wikipedia.org/wiki/Hom_functor)_
-`Hom(-, Node)` in the _cartesian category_ of types. 
+the contravariant [hom-functor](https://en.wikipedia.org/wiki/Hom_functor)
+`Hom(-, Node)` in the cartesian category of types :) 
 
-```js
-//  g : (num, num) -> str
-let g = ([x, y]) => `translate(${x}, ${y})`; 
-
-//  circle : str -> Node 
-let circle = dom('circle')
-    .attr('transform', m => m)
-    .pull(g);
-
-document.querySelector('svg').appendChild(circle([20, 30]));
+__Arrays__. 
+Functions of type `a -> Node` 
+are naturally transformed to `[a] -> [Node]` maps: 
 ```
-Some people call this the _pullback of `circle` by `g`_. 
-Whatever, fortunately javascript doesn't have types,
-so there's no need to learn black magic to keep 
-[things](https://www.destroyallsoftware.com/talks/wat)
-running :) 
+dom.map : (a -> Node) -> [a] -> [Node] 
+```
+As far as dom instances are pure functions, this 
+is rigorously equivalent to calling `Array.map`. 
+
+Using `dom.map` will be mostly useful to associate 
+index-specific DOM actions in the IO monad. 
+
+__Records__. 
+Similarly, we map `a -> Node` to a type of functions on records `{a} -> {Node}`:
+```
+dom.rmap : (a -> Node) -> {a} -> {Node} 
+```
+This is not yet implemented, but there's little more to it than its array
+counterpart. 
+
+## Monads 
+
+The main originality of domorphic is the monadic approach it takes
+to describe interactions between an internal state and the DOM state. 
+
+KISS: No automatic diff refreshes. Only handmade, pure pipelines. 
+
+__IO__. The IO Monad describes input/output operations with the DOM. 
+```
+IO(e): IO operations eventually triggering an event of type e
+```
+
+__State__. The State Monad describes stateful computations. 
+```
+St(s, a) = s -> (a, s) : Computations running with state in s, returning a
+```
+
+__Updates__. Upon events of type `e`, update state and eventually 
+trigger new IO operations:
+```
+update : e -> St(s, IO(e)) 
+```
+and loop!
