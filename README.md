@@ -4,7 +4,7 @@ is a plain javascript program to interact with the DOM,
 in a functional, reactive and keep-it-simple philosophy.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/domorphic@0.0.1/dist/dom.min.js"></script> 
+<script src="https://cdn.jsdelivr.net/npm/domorphic@0.0.2/dist/dom.min.js"></script> 
 ```
 Inspired by the power of [d3](http://github.com/d3)
 and the beauty of [elm](http://elm-lang.org),
@@ -23,9 +23,8 @@ so that you may very well be content with it.
 applications with pure monadic code.
 
 Whether you've ever heard about [monads][monad] or not, 
-they're intuitive and powerful, though there's no need 
-to get a grasp of their metaphysical nature to use the package :)
-
+they're intuitive and powerful, though
+there's no need to worship their metaphysical nature to use the package :)
 For more documentation and examples, visit the project's website
 <a href="https://opeltre.github.io/domorphic"> &#x1F30D; !</a>
 
@@ -33,7 +32,7 @@ For more documentation and examples, visit the project's website
 
 Everything happens in the polymorphic type `a -> Node` 
 of functions returning DOM nodes,
-which, in scientific terms,
+which in scientific terms,
 is also called the category of types above `Node`. 
 [What?!][category]
 
@@ -125,7 +124,7 @@ In the category of types, a
 - assigns to every type `a` a type `T a`,
 - transforms any map `a -> b` to a map `T a -> T b`. 
 
-Because dom instances are [pure]
+Because dom instances are [pure][pure]
 functions, it is perfectly safe to pipe them into functorial transformations. 
 
 __Pullbacks__. 
@@ -136,7 +135,7 @@ dom.pull : (a -> b) -> (b -> Node) -> (a -> Node)
 ```
 You're looking at
 the contravariant [hom-functor](https://en.wikipedia.org/wiki/Hom_functor)
-`Hom(-, Node)` in the cartesian category of types :) 
+`Hom(-, Node)` in the cartesian category of types <span>&#x1F52C;</span> :)
 
 __Arrays__. 
 Functions of type `a -> Node` 
@@ -182,10 +181,10 @@ Upon an event of type `e`, this monad describes
 how to update the internal state and 
 which IO operations should take place: 
 ```
-Update = e -> St(s, IO(e)) : Upon event, update state and trigger IO actions.
+update : e -> St(s, IO(e)) : Upon event, update state and trigger IO actions.
 ```
-Then binding the update to its return value 
-just defines the main loop!
+Binding then the update function to its return value 
+<span>&#x1F504;</span> just defines the main loop!
 
 ```js
 let main = (e0, s0) => {

@@ -1,8 +1,8 @@
 {
   "name": "domorphic",
-  "version": "0.0.0",
-  "description": "a functional and eventful template and framework",
-  "main": "back.js",
+  "version": "0.0.1",
+  "description": "pure js DOM templating",
+  "main": "index.js",
   "directories": {
     "example": "examples"
   },
@@ -17,16 +17,16 @@
     "functional",
     "fp",
     "template",
-    "framework",
-    "dom",
-    "middleware"
+    "DOM",
+    "monad",
+    "functor"
   ],
   "author": "Olivier Peltre",
   "license": "GPL-2.0",
   "bugs": {
     "url": "https://github.com/opeltre/domorphic/issues"
   },
-  "homepage": "https://github.com/opeltre/domorphic#readme",
+  "homepage": "https://opeltre.github.io/domorphic",
   "dependencies": {
     "lolo": "file:__"
   }
