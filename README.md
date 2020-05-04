@@ -1,7 +1,3 @@
----
-layout: dompage
----
-
 # domorphic
 
 is a plain javascript program to interact with the DOM, 
@@ -15,8 +11,6 @@ and the beauty of [elm](http://elm-lang.org),
 this library attempts to breed their many respective qualities,
 to make shaping DOM interfaces within js enjoyable, smooth and pure. 
 
-For more documentation and examples, visit the project's [website][domorphic].
-
 ## Foreword
 
 There are two layers to this library:
@@ -29,8 +23,11 @@ so that you may very well be content with it.
 applications with pure monadic code.
 
 Whether you've ever heard about [monads][monad] or not, 
-they're intuitive and powerful, yet there's no need 
-to get a grasp of their metaphysical nature to use the package! 
+they're intuitive and powerful, though there's no need 
+to get a grasp of their metaphysical nature to use the package :)
+
+For more documentation and examples, visit the project's website
+<a href="https://opeltre.github.io/domorphic"> &#x1F30D; !</a>
 
 ## Usage 
 
