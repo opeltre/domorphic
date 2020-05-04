@@ -1,25 +1,44 @@
+---
+layout: dompage
+---
+
 # domorphic
 
 is a plain javascript program to interact with the DOM, 
 in a functional, reactive and keep-it-simple philosophy.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/domorphic@1.0.0/dist/dom.min.js"></script> 
+<script src="https://cdn.jsdelivr.net/npm/domorphic@0.0.1/dist/dom.min.js"></script> 
 ```
 Inspired by the power of [d3](http://github.com/d3)
 and the beauty of [elm](http://elm-lang.org),
 this library attempts to breed their many respective qualities,
-so that shaping DOM interfaces in pure js 
-may become smooth and enjoyable again! 
+to make shaping DOM interfaces within js enjoyable, smooth and pure. 
+
+For more documentation and examples, visit the project's [website][domorphic].
+
+## Foreword
+
+There are two layers to this library:
+
+- the first one is really just convenience for templating: 
+pure js code which outputs DOM subtrees, regardless of anything else, 
+so that you may very well be content with it. 
+
+- the second one, much more subtle, is about designing stateful and reactive
+applications with pure monadic code.
+
+Whether you've ever heard about [monads][monad] or not, 
+they're intuitive and powerful, yet there's no need 
+to get a grasp of their metaphysical nature to use the package! 
 
 ## Usage 
 
-It's all about the polymorphic type `a -> Node` 
-of functions returning DOM nodes. 
-
-In scientific terms,
-this  is also called the _category of types above_ `Node`. 
-[What?](https://en.wikipedia.org/wiki/Category_theory)
+Everything happens in the polymorphic type `a -> Node` 
+of functions returning DOM nodes,
+which, in scientific terms,
+is also called the category of types above `Node`. 
+[What?!][category]
 
 __Above the DOM__.
 A domorphic instance is just a function returning a DOM node. That's it! 
@@ -32,17 +51,18 @@ And you may very well do `document.body.appendChild`
 or whatever you like with them. 
 
 __Syntax__. 
+All view-related code is meant to be 
+as light and readable as any other templating language:
+except it's javascript! 
+
 The dom constructor parses arguments
 looking for the following pattern: 
 ```js
 dom('tag#id.class', ?{...attrs}, m ?-> [...branches])
 ```
 Each branch may be given either as a dom instance, 
-or as an array of arguments following the same pattern. 
-
-All view-related code is intended to be kept
-as light and readable as any other templating language. 
-Except it's javascript! 
+or as an array of arguments following the same pattern,
+so that you may nest arrays just as you would nest html tags. 
 
 __Attributes__.
 All node attributes are interpreted either as values 
@@ -56,7 +76,7 @@ let a = dom('a')
     .attr('href', m => m.href)
     .on('hover', () => alert("wooo"))
 ```
-although the dom constructor also interprets this following equivalent
+although the dom constructor also interprets the equivalent
 syntax:
 
 ```js 
@@ -75,7 +95,6 @@ The branching attribute itself may be given
 in `a -> [Node]`, as a node array returning function:
 
 ```js
-//  m : [Str]
 let m = ['cats', 'are', 'cute'],
 
 //  p : Str -> Node
@@ -109,16 +128,16 @@ In the category of types, a
 - assigns to every type `a` a type `T a`,
 - transforms any map `a -> b` to a map `T a -> T b`. 
 
-Because dom instances are [pure](https://en.wikipedia.org/wiki/Pure_function) 
+Because dom instances are [pure]
 functions, it is perfectly safe to pipe them into functorial transformations. 
 
 __Pullbacks__. 
-Given a function `a -> b`, precompose your `b -> Node` instance 
+Given a function `a -> b`, precompose a `b -> Node` instance 
 to get an `a -> Node` map: 
 ```
 dom.pull : (a -> b) -> (b -> Node) -> (a -> Node)  
 ```
-However esoteric, you're looking at
+You're looking at
 the contravariant [hom-functor](https://en.wikipedia.org/wiki/Hom_functor)
 `Hom(-, Node)` in the cartesian category of types :) 
 
@@ -147,21 +166,45 @@ counterpart.
 The main originality of domorphic is the monadic approach it takes
 to describe interactions between an internal state and the DOM state. 
 
-KISS: No automatic diff refreshes. Only handmade, pure pipelines. 
+[KISS:][KISS] no automatic diff refreshes -- only handmade, pure pipelines. 
 
-__IO__. The IO Monad describes input/output operations with the DOM. 
+__IO__. The [IO] monad describes input/output operations with the DOM. 
 ```
-IO(e): IO operations eventually triggering an event of type e
-```
-
-__State__. The State Monad describes stateful computations. 
-```
-St(s, a) = s -> (a, s) : Computations running with state in s, returning a
+IO(e) : IO operations, eventually triggering an event of type e.
 ```
 
-__Updates__. Upon events of type `e`, update state and eventually 
-trigger new IO operations:
+__State__. The [State] monad describes stateful computations. 
 ```
-update : e -> St(s, IO(e)) 
+St(s, a) = s -> (a, s) : Computations with state in s, return value in a.
 ```
-and loop!
+
+__Updates__. 
+The State and IO monads yield a composed monadic type `St(s, IO(e))`. 
+
+Upon an event of type `e`, this monad describes
+how to update the internal state and 
+which IO operations should take place: 
+```
+Update = e -> St(s, IO(e)) : Upon event, update state and trigger IO actions.
+```
+Then binding the update to its return value 
+just defines the main loop!
+
+```js
+let main = (e0, s0) => {
+    let [io, s1] = update(e0).run(s0);
+    return io.bind(e1 => main(e1, s1));
+}
+
+let start = s0 => main('start', s0);
+```
+
+
+[category]: https://en.wikipedia.org/wiki/Category_theory
+[KISS]: https://en.wikipedia.org/wiki/KISS_principle
+[pure]: https://en.wikipedia.org/wiki/Pure_function 
+[IO]: https://en.wikipedia.org/wiki/Monad_(functional_programming)#IO_monad
+[State]: https://en.wikipedia.org/wiki/Monad_(functional_programming)#State_monads
+[monad_fp]: https://en.wikipedia.org/wiki/Monad_(functional_programming)
+[monad]: https://en.wikipedia.org/wiki/Monad
+[domorphic]: https://opeltre.github.io/domorphic
