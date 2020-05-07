@@ -2,96 +2,116 @@ let __ = require('lolo'),
     _r = __.record(),
     tree = require('./tree');
 
-/*------ Node Data ------
+/*------ Data ------
+    
+    Compute node attributes from dom instance parameters. 
 
-    Convert a record of model-dependent attributes
-    to a model-dependent record of attributes. 
+        data.apply : Dom(m) -> m -> Data 
 
-    This is done in a similar fashion as: 
+    `Data` is an instance of the tree type class:
+        
+        data.node :     Data -> d 
+        data.branch :   Data -> [d] 
+        data.link :     (d, [d]) -> Data
+
+    and `data.apply` factorises through `data.apply.node` 
+    and `data.apply.branch`. 
+
+    N.B. This is done in a rather similar fashion as: 
 
         _r.apply : {m -> a} -> m -> {a}
 
-    Except we are rather dealing with the union type:
-
-        m ?-> a :: a || m -> a 
-
-    And `a` itself may be of the form `{m ?-> a}`. 
-
-    N.B. The following is esoteric. 
-    The `__` operator acts either as unit or identity:
-
-        __ : (m ?-> a) -> m -> a
-
-    And `__` also acts as composition: 
-
-        __ : ((a -> b), ..., (c -> d)) -> (a -> d)
-
-    Composable functions forming chains in the nerve `N(T)` 
-    of the category of types `T`, 
-    `__` maps `N_k(T)` onto `N_1(T)` for all integer `k`. 
+    except we are dealing with union types of the form 
+    `b || m -> b`, which we'll denote by `m ?-> b`. 
 */ 
 
-let data = {};
+let data = dom_ => m => data.link(
+    data.node(dom_)(m),
+    data.branch(dom_)(m)
+);
 
-//  data(m) :: {m ?-> a}
-data.types = {
-    tag:    'm?a',
+//  Dom(m) :: {m ?-> a}
+let types = {
+tag:    'm?a',
     svg:    'm?a',
     attr:   'm?{m?a}', 
     prop:   'm?{m?a}',
     style:  'm?{m?a}',
-    on:     'm?{e(m)}',
+    on:     'm?{f(-,m)}',
     html:   'm?a',
     value:  'm?a',
     class:  'm?a',
     place:  'm?a',
-    put:    'm?a'
+    put:    'm?a',
+    push:   'f(-,m)'
 };
 
-data.maps = {
-    'm?a':      __.id,
-//              {m ?-> a} -> m -> {a}
-    'm?{m?a}':  __(_r.map(v => __(v)), _r.apply),
-//              {l} -> m -> {l(m)}
-    'm?{e(m)}': listeners => M => _r.map(__.bindr(M))(listeners)
+//  fun : (m ?-> a) -> m -> a 
+let fun = y => (typeof y === 'function' && ! y._domInstance)
+    ? y 
+    : () => y;
+
+//  rfun : lots of fun
+let rfun = {
+    'm?a':          fun,
+    'm?{m?a}':      __(fun, _r.map(fun), _r.apply),
+    'm?{f(-,m)}':   fs => M => _r.map(__.bindr(M))(fun(fs)(M)),
+    'f(-,m)':       f => M => __.bindr(M)(f)
 };
 
-//  .apply : data(m) -> m -> data
-data.apply = 
-    D => M => __(
-        _r.map(
-//          (m ?-> d(m)) -> m -> m ?-> d 
-            (Dk, k) => __(Dk, data.maps[data.types[k]]),
-//          (m -> m ?-> d) -> m -> d
-            Dk => M => __(Dk(M))(M)
-        ),
+//------ Node Maps ------
+
+data.maps = ([n, b], i) => 
+    [_r.set('place', [`[${d.place}]`, i]), b];
+
+data.rmaps = ([n, b], k) => 
+    [_r.set('place', [`{${d.place}}`, k]), b];
+
+//------ Tree Elements ------
+
+//  .node : Dom(m) -> m -> d  
+data.node = 
+    dom_ => m => __(
+        _r.without('branch'), 
+        _r.map((dk, k) => rfun[types[k]](dk)),
         _r.apply
-    )(D)(M);
+    )(dom_.self)(m);
 
+//  .branch : Dom(m) -> m -> [Tree(d)]
+data.branch = 
+    dom_ => m => {
+        let b = fun(dom_.self.branch)(m); 
+        if (b._domInstance === 'map') 
+            return b.pull(m)
+                .map(data(b)(m))
+                .map(data.maps) 
+        if (b._domInstance === 'rmap') 
+            return _r.map(
+                data(b)(m),
+                data.rmaps
+            )(b.pull(m));
+        else
+            return b.map(n => data(n)(m));
+    };
 
-//------ Propagated Attributes ------
+//------ Tree Constructor ------
 
-//          : data -> data -> data
-let linkSvg = 
-    D => Di => D.tag === 'svg' || D.tag === 'g'
-        ? _r.assign({svg: true})(Di)
-        : Di;
+//--links : d -> d -> d ---
+let linkSvg = n => ni => 
+    n.svg ? _r.write('svg', true)(ni) : ni;
 
-//          : data -> data -> data
-let linkDoc = 
-    D => Di => _r.assign({doc: D.doc})(Di);
+let linkDoc = n => ni => 
+    _r.assign({doc: n.doc})(ni);
 
-//       : data -> data -> data
-let link = 
-    l => __.pipe(
-        ...[linkSvg, linkDoc].map(f => f(l))
-    );
+let link = n => __.pipe(
+    ...[linkSvg, linkDoc].map(__.$(n))
+);
+//--links
 
-//  .link : data -> [tree(data)] -> tree(data)
-data.link = 
-    (n, b) => [
-        n, 
-        b.map(([ni, bi]) => [link(n)(ni), bi])
-    ]
+//  .link : d -> [Tree(d)] -> Tree(d)
+data.link = (n, b) => [
+    n, 
+    b.map(([ni, bi]) => [link(n)(ni), bi])
+]
 
 module.exports = data;

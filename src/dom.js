@@ -69,13 +69,15 @@ function dom (t, a, b) {
         html:       '',
         value:      '',
         class:      '',
-        // branches
-        branch:     branch,
-        // pull-back
-        pull:      __.id,
         // IO location
         put:        'body',
         place:      null 
+        // pull-back
+        pull:       __.id,
+        // push-forward 
+        push:       __.id,
+        // branches
+        branch:     branch,
     };
    
     __.logs('other:')(other);
