@@ -21,10 +21,10 @@ dom.tree =
         if (t._domInstance === 'pushforward')
             return t.tree(M0);
         let M1 = t.pull()(M0),
-            node = data.apply(t.node())(M1),
+            nodeData = data.apply(t.node())(M1),
             branch = dom.apply(t.branch())(M1);
         return data.link(
-            node, 
+            nodeData, 
             branch._domInstance === 'map'
                 ? branch.trees(M1)
                 : branch.map(ti => ti.tree(M1))
@@ -41,8 +41,19 @@ dom.pull =
         return my;
     };
 
-// .push : (tree(data) -> tree(data)) -> dom(m) -> dom(m) 
+// .push : (Node -> Node) -> dom(m) -> dom(m) 
 dom.push = 
+    f => node => {
+        let my = m => IO.node(my)(m);
+        my.tree = m => dom.tree(my);
+        my.node = m => __(node.node, _r.set('push', f))(m);
+        my.data = m => __(node.data, _r.set('push', f))(m);
+        my._domInstance = "pushforward";
+        return my;
+    }
+
+// .pushData : (tree(data) -> tree(data)) -> dom(m) -> dom(m) 
+dom.pushData = 
     f => node => {
         let my = m => IO.node(my)(m);
         my.tree = m => f(node.tree(m)); 
@@ -72,7 +83,9 @@ function dom (t, a, b) {
         // branches
         branch:     branch,
         // pull-back
-        pull:      __.id,
+        pull:       __.id,
+        // push-forward
+        push:       __.id,
         // IO location
         put:        'body',
         place:      null 
@@ -119,7 +132,7 @@ dom.map = function (node, pull) {
         pull : pull || __.id,
     };
 
-    let push = i => dom.push(
+    let push = i => dom.pushData(
         ([d, ds]) => [
             d.place ? _r.set('place', [`[${d.place}]`, i])(d) : d,
             ds

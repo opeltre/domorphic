@@ -3,7 +3,8 @@ module.exports = IO;
 let __ = require('lolo'),
     dom = require('./dom'),
     tree = require('./tree'),
-    DOM = require('./DOM');
+    DOM = require('./DOM'),
+    drag = require('./drag');
 
 let _r = __.r;
 
@@ -25,6 +26,9 @@ IO.push = io => f => io.push(f);
 //.document : () -> document
 IO.document = () => DOM();
 
+//------ Event Wrappers ------- 
+
+IO.drag = __(__.log, drag); 
 
 /*------ Output Stream ------
     

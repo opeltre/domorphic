@@ -34,7 +34,7 @@ DOM.unit = (D, io=IO()) => {
     _r.forEach(addListener)(D.on);
 
     D.place && io.keep(D.place, N);
-    return N;
+    return D.push ? D.push(N, io) : N;
 }
 
 DOM.set = (n, d) => {

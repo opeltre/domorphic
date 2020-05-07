@@ -2,16 +2,20 @@
 let __ = require('./src/__'),
     record = require('./src/record'),
     nd = require('./src/nd_array'),
-    getset = require('./src/getset');
+    getset = require('./src/getset'),
+    alg = require('./src/alg/index'),
+    top = require('./src/top/index');
 
 module.exports = Object.assign(__, {
     record: record.new,
     r: record,
     nd,
-    getset
+    getset,
+    alg, 
+    top
 });
 
-},{"./src/__":2,"./src/getset":3,"./src/nd_array":4,"./src/record":5}],2:[function(require,module,exports){
+},{"./src/__":2,"./src/alg/index":6,"./src/getset":8,"./src/nd_array":9,"./src/record":10,"./src/top/index":13}],2:[function(require,module,exports){
 /*** __ ***/
 
 //------ monad: composition and chains ------
@@ -128,6 +132,453 @@ if (typeof module !== 'undefined')
     module.exports = __;
 
 },{}],3:[function(require,module,exports){
+let __ = require('../__'),
+    Tensor = require('./tensor');
+
+//------ complex casting ------
+
+let C =
+    (x, y) => typeof x === 'number'
+        ? ({ Re: x, Im: y || 0 })
+        : x
+
+//------ complex field ------
+
+C.i = C(0,1);
+
+let Re = z => typeof z === 'number' ? z : z.Re,
+    Im = z => typeof z === 'number' ? 0 : z.Im;
+
+let add = 
+    (a, b) => C(
+        Re(a) + Re(b),
+        Im(a) + Im(b)
+    );
+
+let mult = 
+    (a, b) => C(
+        Re(a) * Re(b) - Im(a) * Im(b),
+        Re(a) * Im(b) + Im(a) * Re(b)
+    );
+
+let bar     = z => C(Re(z), -Im(z)),
+    abs2    = z => Re(z)**2 + Im(z)**2,
+    abs     = z => Math.sqrt(abs2(z)),
+    inv     = z => mult(C(1 / abs2(z)), bar(z)),
+    zero    = _ => C(0),
+    unit    = _ => C(1);
+
+Object.assign(C, 
+    { add, mult, inv, zero, unit },
+    { Im, Re, bar, abs }
+);
+
+
+//------ complex ND-arrays ------
+
+let _C = Tensor(C);
+
+
+//------ polar coordinates, exp and log  ------
+
+let sign = t => Math.sign(t) || 1;
+
+let phase = 
+    z => Re(z) === 0 
+        ? Math.sign(Im(z)) * (Math.PI / 2)
+        : Math.atan(Im(z) / Re(z)) -
+                (Re(z) > 0 ? 0 : sign(Im(z)) * Math.PI);
+
+let expi = 
+    t => C(Math.cos(t), Math.sin(t));
+
+_C.exp = 
+    _C.map( 
+        z => mult(
+            C(Math.exp(Re(z))), 
+            expi(Im(z))
+        )
+    );
+
+_C.log = 
+    _C.map(
+        z => C(Math.log(abs(z)), phase(z))
+    );
+
+_C.phase    = _C.map(phase);
+_C.expi     = _C.map(expi);
+_C.i        = C.i;
+
+module.exports = _C;
+
+},{"../__":2,"./tensor":7}],4:[function(require,module,exports){
+let __ = require('../__'),
+    Tensor = require('./tensor');
+
+//------ real ND-arrays ------
+
+let _R = Tensor();
+
+
+//------ exp_ and _log ------
+
+let exp_ = x => Math.exp(-x),
+    _log = x => - Math.log(x);
+
+_R.exp_ = _R.map(exp_);
+_R._log = _R.map(_log);
+
+_R.free = 
+    __.pipe(
+        _R.exp_,
+        _R.int,
+        _log
+    );
+
+_R.eff = 
+    (is, js) => __.pipe(
+        _R.exp_,
+        _R.project(is, js),
+        _R._log
+    );
+
+
+//------ numerically stable free energy ? ------ 
+
+_R.max = _R.reduce(Math.max);
+_R.min = _R.reduce(Math.min);
+
+_R.freeE =
+    H => {
+        let m = _R.min(H),
+            H_m = _R.map(h => h - m)(H);
+        return m + _log(_R.int(_R.exp_(H_m)));
+    };
+
+_R.gibbs =
+    H => {
+        let F = _R.freeE(H),
+            H_F = _R.map(h => h - F)(H)
+
+        return _R.exp_(H_F);
+    }; 
+
+_R.effE = 
+    (is, js) => 
+        H => {
+            let m = _R.min(H),
+                H_m = _R.map(h => h - m)(H),
+                sum = _R.project(is, js),
+                eff_m = _R._log(sum(_R.exp_(H_m)));
+
+            return _R.map(h => h + m)(eff_m);
+        };
+
+module.exports = _R;
+
+},{"../__":2,"./tensor":7}],5:[function(require,module,exports){
+/*  The Fast Fourier Transform `divide and conquer' scheme 
+ *  is canonically adapted for computing Fourier transforms 
+ *  on a product set. 
+ *  
+ *  Example
+ *  -------
+ *  Compare the product set {1...N1} x {1...N2} with {1...N1*N2}. 
+ *  Letting:
+ *      - x = x1    + N1*x2
+ *      - y ⁼ N2*y1 + y2 
+ *  And denoting phases by:
+ *      - phi   = 2 pi x*y / N1*N2
+ *      - phi1  = 2 pi x1*y1 / N1
+ *      - phi2  = 2 pi x2*y2 / N2
+ *  One does get `phi = phi1 + phi2' in R mod (2 pi).
+ *  
+ *  Conclusion
+ *  ----------
+ *  FFT should be implemented here.
+ *  It consists of computing N1 FFTs of size N2, 
+ *  before computing N2 FFTs of size N1. 
+ *  Note recursion. 
+ */
+
+let __ = require('../__'),
+    _R = require('./R'),
+    _C = require('./C');
+
+//------ (slow) Fourier transform ------
+
+let Fourier = 
+
+    u => {
+
+        let dims = _C.shape(u),
+            e_i = _F.waves(dims),
+            norm = Math.sqrt(_C.size(u));
+
+        let Fu = 
+            k => _C.scale(1 / norm)(_C.inner(e_i(k), u))
+
+        return _C.compute(dims)(Fu);
+
+    };
+
+let _F = 
+    u => Array.isArray(u)
+        ? Fourier(_C(u))
+        : u;
+
+_F.bar = 
+    __.pipe(_C.reverse, _F);
+
+
+//------ spectral domain [ 0, 2 pi [ ------
+
+_F.circle = 
+    N => __.range(N).map(
+        n => 2 * n * Math.PI / N
+    );
+
+_F.compute = 
+    Ns => _C.compute(Ns.map(_F.circle));
+
+
+//------ plane waves Fourier basis ------
+
+_F.waves = 
+    Ns => k => _F.compute(Ns)(
+        x => _C.expi(_R.inner(k, x))
+    );
+
+
+//====== Fast Fourier Transform ======
+
+//------ FT along first slice ------
+
+let F0 = 
+    
+    u => { 
+
+        let dims = _C.shape(u),
+            [N, ...Ns] = dims,
+            [i, ...is] = __.range(dims.length);
+
+        let vec = k => [k, ...Ns.map(_ => 0)]
+            e_i = k => _F.waves([N, ...Ns])(vec(k));
+
+        let sum = _C.project([i, ...is], is),
+            scale = _C.scale(1 / Math.sqrt(N));
+
+        return __.range(N).map(
+            k => scale(sum(_C.mult(e_i(k), u)))
+        );
+
+    };
+
+_F.slice = 
+    u => _C.shape(u).length ? F0(u) : u;
+
+
+//------ FFT ------
+
+let fft = 
+    u => _C.shape(u).length
+        ? _F.slice(u.map(v => fft(v)))  
+        : u;
+
+_F.fft = 
+    __.pipe(_C, fft);
+
+_F.ifft = 
+    __.pipe(_C.reverse, _F.fft);
+
+
+module.exports = _F
+
+},{"../__":2,"./C":3,"./R":4}],6:[function(require,module,exports){
+let R = require('./R'),
+    C = require('./C'),
+    tensor = require('./tensor'),
+    fourier = require('./fourier');
+
+module.exports = {R, C, tensor, fourier}; 
+
+},{"./C":3,"./R":4,"./fourier":5,"./tensor":7}],7:[function(require,module,exports){
+let __ = require('../__'),
+    ND = require('../nd_array'),
+    {cell} = require('../top/id');
+    
+let record = require('../record');
+
+module.exports = Tensor;
+
+function Tensor(K={}) {
+//  Create the ND-algebra type instance of tensors over the field K.
+
+    //====== inherit from ND type instance ======
+    let nd = ND();
+    //------ cast scalars to K ------
+    let toK = typeof K === 'function' 
+            ? K
+            : __.id;
+    let _K = nd.mapN(toK);
+    record.assign(nd)(_K);
+
+
+    //====== K-tensors ======
+
+    //------ field methods ------
+    let add     = K.add     || ((a, b) => a + b),
+        mult    = K.mult    || ((a, b) => a * b),
+        inv     = K.inv     || (a => 1 / a),
+        zero    = K.zero    || (_ => toK(0)),
+        unit    = K.unit    || (_ => toK(1)),
+        abs     = K.abs     || Math.abs;
+
+
+    //------ linear structure ------
+
+    _K.add2 = 
+        _K.map2(add);
+
+    _K.add = 
+        (...as) => as.reduce(_K.add2);
+
+    _K.scale = 
+        z => _K.map(a => mult(toK(z), a));
+
+    _K.minus = 
+        _K.scale(-1);
+
+    _K.subt = 
+        (a, b) => _K.add(a, _K.minus(b));
+
+    _K.span = 
+        (ks, as) => _K.add(
+            as.map((a, i) => _K.scale(ks[i])(a))
+        );
+
+    _K.zero = 
+        (Ns) => _K.compute(Ns)(zero);
+
+
+    //------ ring structure ------
+
+    _K.mult =
+        _K.map2(mult);
+
+    _K.unit = 
+        (Ns) => _K.compute(Ns)(unit);
+
+
+    //------ multiplicative group ------
+
+    _K.inv = 
+        _K.map(inv);
+
+    _K.div = 
+        (a, b) => _K.mult(a, _K.inv(b));
+
+    //------ complex / quaternionic operations ------
+
+    if (K.bar) 
+        _K.bar = _K.map(K.bar);
+
+    if (K.Re) 
+        _K.Re = _K.map(K.Re);
+
+    if (K.Im)
+        _K.Im = _K.map(K.Im);
+
+
+    //------ integration and inner product ------
+
+    _K.int = _K.reduce(_K.add);
+
+    _K.mean = 
+        u => mult(_K.int(u), toK(1 / _K.size(u)));
+
+    _K.inner = 
+        K.bar
+            ? __.pipe(
+                (a, b) => _K.mult(_K.bar(a), b),
+                _K.int
+            )
+            : __.pipe(_K.mult, _K.int);
+
+    _K.abs = 
+        _K.map(abs);
+
+    _K.norm = 
+        a => Math.sqrt((K.Re || __.id)(
+            _K.inner(a, a)
+        ));
+
+
+
+    //------ adjoint extension and projection ------
+
+    let extend = 
+        ([i, ...is], [j, ...js], [E, ...Es]) => 
+            q => typeof i === 'undefined' 
+                ? q 
+                : (i === j 
+                    ? q.map(_K.extend(is, js, Es))
+                    : E.map(
+                        _ => _K.extend(is, [j, ...js], Es)(q)
+                    )
+                );
+
+    let project = 
+        ([i, ...is], [j, ...js]) => 
+            q => typeof(i) === 'undefined'
+                ? q
+                : ( i === j 
+                    ? __.map(_K.project(is, js))(q)
+                    : _K.project(is, [j, ...js])(q.reduce(_K.add2))
+                );
+
+    let indices = js => 
+        Array.isArray(js) 
+            ? js
+            : js.split('.').filter(j => j !== '');
+
+    _K.project = 
+        (a, b) => project(...[a, b].map(indices));
+
+    _K.extend = 
+        (a, b, Es) => extend(...[a, b].map(indices), Es);
+
+    return _K;
+
+}
+
+
+
+Tensor.functor = function (E, K) {
+//  Return the two-sided functor K^E:
+//      E : I -> [num] describes the possible states of each coordinate. 
+
+    let _K = Tensor(K); 
+
+    //------ compute, shapes given by E ------
+    let compute = _K.compute,
+        Es = is => cell(is).map(E);
+
+    _K.compute = 
+        is => compute(Es(is));
+
+    //------ functorial maps ------
+    _K.func = 
+        (is, js) => _K.project(is, js);
+
+    _K.cofunc = 
+        (is, js) => _K.extend(is, js, Es(is));
+
+    return _K;
+
+}
+
+},{"../__":2,"../nd_array":9,"../record":10,"../top/id":12}],8:[function(require,module,exports){
 let __ = require('./__'),
     _r = require('./record');
 
@@ -216,7 +667,7 @@ getset.applyMethod = function (my, name, attrs) {
 module.exports = getset;
 
 
-},{"./__":2,"./record":5}],4:[function(require,module,exports){
+},{"./__":2,"./record":10}],9:[function(require,module,exports){
 let __ = require('./__');
 
 function ND() {
@@ -302,7 +753,7 @@ function ND() {
 
 module.exports = ND; 
 
-},{"./__":2}],5:[function(require,module,exports){
+},{"./__":2}],10:[function(require,module,exports){
 let __ = require('./__');
 
 let _r = Record();
@@ -417,7 +868,7 @@ function Record () {
         (f, r) => q => 
             my.keys(q).reduce(
                 (a, k) => f(a, q[k], k),
-                r || {}
+                typeof r !== 'undefined' ? r : {}
             );
 
 
@@ -487,7 +938,482 @@ function Record () {
     return my;
 }
 
-},{"./__":2}],6:[function(require,module,exports){
+},{"./__":2}],11:[function(require,module,exports){
+let __ = require('../__'),
+    Nerve = require('./nerve'),
+    set = require('./set'),
+    record = require('../record'),
+    {chain, cell} = require('./id');
+
+//------ extend a functor `G: X -> Ab' to `NX' ------
+/*
+    instance G : (X => Ab) 
+    where
+        G.func :    (a > b) -> G a -> G b
+        G.zero :    a -> G a 
+        G.add :     G a -> G a -> G a
+        G.scale :   num -> G a -> G a
+
+    ------ natural transformations ------
+
+    complex :   (X => Ab)   =>  (NX => Ab)*
+                (X => Ab)*  =>  (NX => Ab)
+                (X =<> Ab)  =>  (NX =<> Ab)
+*/
+
+
+module.exports = function (G, X) {
+
+    let N = Nerve(X),
+        NG = baseSpace(G, N); 
+
+    if (G. func) 
+        NG = cochainComplex(G, N, NG);
+
+    if (G.cofunc)
+        NG = chainComplex(G, N, NG);
+
+    return NG;
+}
+
+
+//------ (X => Ab) -> (NX => Ab)* ------
+
+function baseSpace (G, N) {
+
+    let NG = record.new();
+
+    let compute = NG.compute;
+
+    NG.compute = 
+        k => f => compute(
+            f, 
+            a => chain.id(a)
+        )(N(k));
+
+    NG.zero = 
+        k => NG.compute(k)(
+            a => G.zero(chain.cell(a))
+        );
+
+    NG.add2 = 
+        NG.map2(G.add2);
+    
+    NG.add = 
+        (...us) => us.reduce(NG.add2);
+
+    NG.subt = 
+        (u, v) => NG.add(u, NG.scale(-1)(v));
+
+    NG.mult = 
+        (...us) => us.reduce(NG.map2(
+            (ua, va, a) => G.mult(ua, va)
+        ));
+
+    NG.scale = 
+        s => NG.map(G.scale(s));
+
+    NG.int = 
+        NG.reduce((x, y) => x + y, 0);
+
+    NG.inner =
+       (u, v) => NG.int(NG.map2(G.inner)(u, v));
+
+    NG.norm = 
+        u => Math.sqrt(NG.inner(u, u));
+
+    NG.get = 
+        (u, a) => u[chain.id(a)];
+
+    NG.set = 
+        (u, a, ua) => { 
+            u[chain.id(a)] = ua; 
+            return u;
+        };
+
+    return NG;
+}
+
+
+//------ (X => Ab) -> Ch* ------
+
+function cochainComplex (G, N, NG) {
+
+    if (!NG) 
+        NG = baseSpace(G, N);
+
+    NG.cofunc = 
+        (a, b) => G.func(chain.cell(b), chain.cell(a));
+
+
+    NG.diff = 
+        k => 
+            u => __.range(k + 2)
+                .map(j => NG.coface(j, k)(u))
+                .reduce(NG.add2);
+
+    NG.coface = 
+        (j, k) => 
+            u => NG.map(__.pipe(
+                (_, a) => chain(a),
+                a => [a, N.face(j)(a)],
+                ([a, b]) => NG.cofunc(a, b)(u[chain.id(b)]),
+                va => G.scale((-1)**j)(va)
+            ))(NG.zero(k + 1));
+
+    return NG;
+}
+
+
+//------ (X => Ab)* -> Ch ------
+
+function chainComplex (G, N, NG) {
+
+    if (!NG) 
+        NG = baseSpace(G, N);
+
+    NG.func = 
+        (a, b) => G.cofunc(chain.cell(b), chain.cell(a));
+
+    NG.face = 
+        (j, k) => 
+            u => NG.map(__.pipe(
+                (_, b) => N.cofaces(j)(chain(b))
+                    .map(a => NG.func(a, b)(u[chain.id(a)]))
+                    .reduce(G.add2, G.zero(b)),
+                vb => G.scale((-1)**j)(vb)
+            ))(NG.zero(k - 1));
+
+    NG.codiff = 
+        k => 
+            u => __.range(k + 1)
+                .map(j => NG.face(j, k)(u))
+                .reduce(NG.add2);
+
+    //------ combinatorics ------
+
+    let iprod = 
+        a0 => u => as => u([a0, ...as]); 
+
+    let zeta = 
+        k => u => k === 0
+            ? __.pipe(
+                chain, 
+                ([a]) => N
+                    .cone(a)
+                    .map(b => G.cofunc(a, b)(u([b])))
+                    .reduce(G.add2) 
+            )
+            : __.pipe(
+                chain,
+                ([a0, a1, ...as]) => N
+                    .intercone(a0, a1)
+                    .map(b0 => zeta(k-1)(iprod(b0)(u))([a1, ...as]))
+                    .reduce(G.add2)
+            );
+
+    NG.zeta = 
+        k => u => NG.compute(k)(
+            zeta(k)(as => u[chain.id(as)] || G.zero(as[as.length - 1]))
+        );
+    
+    let last = 
+        as => as[as.length - 1];
+
+    let nu = 
+        (a0, k) => v => k === 0
+            ? ([]) => N
+                .cone(a0)
+                .map(b => G.cofunc(a0, b)(
+                    G.scale(N.mu(a0, b))(v([b]))
+                ))
+                .reduce(G.add2)
+            : (as) => N
+                .intercone(a0, as[0])
+                .map(b0 => G.cofunc(last(as), set.cap(b0, last(as)))(
+                    G.scale(N.mu(a0, b0))(
+                        v([a0, ...as].map(aj => set.cap(b0, aj)))
+                    )
+                ))
+                .reduce(G.add2);
+
+    NG.mu = 
+        k => v => NG.compute(k)(
+            __.pipe(
+                chain, 
+                as => as.reduce(
+                    (u, aj, j) => nu(aj, k - j)(u),
+                    bs => v[chain.id(bs)] || G.zero(bs[bs.length - 1]) 
+                )([])
+            )
+        );
+
+    return NG;
+
+}
+
+},{"../__":2,"../record":10,"./id":12,"./nerve":14,"./set":15}],12:[function(require,module,exports){
+let __ = require('../__');
+
+//------ cell ------
+
+//       : str -> [I] 
+let cell = 
+    is => Array.isArray(is) 
+        ? is 
+        : is.split('.').filter(s => s!== '');
+
+//      : [I] -> str
+cell.id =  
+    is => Array.isArray(is) 
+        ? is.join('.') 
+        : is;
+
+
+//------ chain ------
+
+//        : str -> [[I]]
+let chain = 
+    as => Array.isArray(as) 
+        ? as 
+        : as.split(' > ').map(cell);
+
+//       : [[I]] -> str
+chain.id =
+    as => Array.isArray(as) 
+        ? as.map(cell.id).join(' > ') 
+        : as;
+
+//         : [[I]] -> [I] 
+chain.cell = 
+    __.pipe(chain, ch => ch[ch.length - 1]);
+
+
+//-------
+module.exports = {cell, chain};
+
+},{"../__":2}],13:[function(require,module,exports){
+let set = require('./set'),
+    nerve = require('./nerve'),
+    complex = require('./complex'),
+    id = require('./id');
+
+module.exports = {set, nerve, complex, id};
+
+},{"./complex":11,"./id":12,"./nerve":14,"./set":15}],14:[function(require,module,exports){
+let __ = require('../__'),
+    S = require('./set'),
+    id = require('./id');
+
+let {cell, chain} = id;
+
+
+//------ Nerve type class ------ 
+
+function Nerve (X) { 
+
+    let N = 
+        k => Ns[k] || [];
+    
+    let N0 = X.map(a => [a]),
+        Ns = chains([N0]);
+
+    N.face = 
+        k => 
+            as => [...as.slice(0, k), ...as.slice(k + 1)];
+
+    N.cofaces = 
+        k => 
+            as => N(as.length)
+                .filter(bs => S.eq(N.face(k)(bs), as));
+
+
+    N.cone = 
+        a => [a, ...X.filter(b => S.sup(a, b))]
+
+    N.cocone = 
+        b => [b, ...X.filter(a => S.sup(a, b))]
+
+    N.intercone = 
+        (a, c) => X.filter(b => S.geq(a, b) && !S.geq(c, b));
+
+    N.interval = 
+        (a, c) => X.filter(b => S.sup(a, b) && S.sup(b, c));
+
+    N.mu = 
+        (a, c) => S.eq(a, c)
+            ? 1
+            : [a, ...N.interval(a, c)]
+                .map(b => - N.mu(a, b))
+                .reduce((x, y) => x + y);
+
+
+    return N;
+}
+
+
+
+//------ Nerve with cones & intervals in memory ------
+
+Nerve.record = function (X) {
+
+    let N = Nerve(X),
+        _r = __.record();
+
+    let cones = _r.compute(N.cone, cell.id)(X),
+        cocones = _r.compute(N.cocone, cell.id)(X),
+        intervals = _r.compute(__.xargs(N.interval), chain.id)(N(1)),
+        intercones = _r.compute(__.xargs(N.intercone), chain.id)(N(1));
+        
+    let mu = _r.compute(__.xargs(N.mu), chain.id)([...X.map(a => [a, a]), ...N(1)]);
+
+    N.cone = a => cones[cell.id(a)];
+    N.cocone = b => cocones[cell.id(b)];
+    N.interval = (a, c) => intervals[chain.id([a, c])];
+    N.intercone = (a, c) => intercones[chain.id([a, c])];
+
+    N.mu = (a, c) => mu[chain.id([a, c])];
+
+    N.cofaces =  
+        k => 
+            bs => {
+                let n = bs.length; 
+                if ((k < 0) || (k > n)) {
+                    return [];
+                }
+                else if (n === 0) {
+                    return X.map(a => [a])
+                } 
+                else if (k === 0) {
+                    return N.cocone(bs[0]).slice(1)
+                        .map(a => [a, ...bs]);
+                }
+                else if (k === n) {
+                    return N.cone(bs[n - 1]).slice(1)
+                        .map(c => [...bs, c]);
+                }
+                else {
+                    return N.interval(bs[k - 1], bs[k])
+                        .map(b => [...bs.slice(0, k), b, ...bs.slice(k)]);
+                }
+            }
+
+    return N;
+
+}
+
+
+module.exports = 
+    __.pipe(
+        __.map(cell),
+        Nerve.record
+    );
+
+
+//-------- compute the nerve -------
+
+function chains (N) {
+
+    return N[N.length - 1].length 
+        ? chains([
+            ...N, 
+            N[N.length - 1]
+                .map(
+                    as => N[0]
+                        .filter(([b]) => S.sup(as[as.length - 1], b))
+                        .map(([b]) => [...as, b])
+                )
+                .reduce((xs, ys) => [...xs, ...ys])
+        ])
+        : N.slice(0, N.length - 1);
+};
+
+},{"../__":2,"./id":12,"./set":15}],15:[function(require,module,exports){
+let __ = require('../__');
+
+
+//------ cast to set: filter and order ------
+
+let S =
+    ([i, ...is], ord) => typeof i !== 'undefined' 
+        ? S.cup(S(is), [i], ord) 
+        : [];
+
+
+//------ equality ------
+
+let arrEq = 
+    ([i, ...is], [j, ...js]) => S.eq(i, j)
+        ? (is.length || js.length ? arrEq(is, js) : true)
+        : false;
+
+S.eq = 
+    (a, b) => Array.isArray(a) && Array.isArray(b)
+        ? arrEq(a, b)
+        : a === b;
+
+
+//------ membership ------
+
+S.in = 
+    (i, [j, ...js]) => typeof j !== 'undefined'
+        ? (S.eq(i, j) ? true : S.in(i, js))
+        : false;
+
+
+//------ boolean algebra ------
+
+S.cap = 
+    (a, b) => a.filter(i => S.in(i, b));
+
+S.cup = 
+    (a, b, ord) => [...a, ...b.filter(j => !S.in(j, a))]
+        .sort(ord);
+
+S.diff = 
+    (a, b) => a.filter(i => !S.in(i, b));
+
+
+//------ order relations --------
+
+S.leq = 
+    (a, b) => S.eq(a, S.cap(a,b));
+
+S.geq = 
+    (a, b) => S.eq(S.cap(a,b), b);
+
+S.sub = 
+    (a, b) => S.leq(a, b) && !S.eq(a, b);
+
+S.sup = 
+    (a, b) => S.geq(a, b) && !S.eq(a, b);
+
+
+//------ cap-closure ------
+
+S.closure = 
+    op => as => as.length
+        ? [ 
+            ...as,
+            ...S.closure(op)(S(
+                __.logs('closure:')(
+                as
+                    .map(
+                        (a, i) => as.slice(i+1)
+                            .map(b => op(a, b))
+                            .filter(c => ! S.in(c, as))
+                    )
+                    .reduce((xs, ys) => [...xs, ...ys])
+                )
+            ))
+        ]
+        : [];
+
+S.capClosure = S.closure(S.cap);
+
+module.exports = S;
+
+},{"../__":2}],16:[function(require,module,exports){
 let dom = require('./src/dom'),
     IO = require('./src/io'),
     app = require('./src/update'),
@@ -499,7 +1425,7 @@ module.exports = Object.assign(dom,
     {app},
 );
 
-},{"./src/dom":9,"./src/io":10,"./src/state":12,"./src/update":14}],7:[function(require,module,exports){
+},{"./src/dom":19,"./src/io":21,"./src/state":23,"./src/update":25}],17:[function(require,module,exports){
 module.exports = DOM;
 
 let tree = require('./tree'),
@@ -536,7 +1462,7 @@ DOM.unit = (D, io=IO()) => {
     _r.forEach(addListener)(D.on);
 
     D.place && io.keep(D.place, N);
-    return N;
+    return D.push ? D.push(N, io) : N;
 }
 
 DOM.set = (n, d) => {
@@ -589,7 +1515,7 @@ function DOM () {
     };
 }
 
-},{"./io":10,"./tree":13,"lolo":1}],8:[function(require,module,exports){
+},{"./io":21,"./tree":24,"lolo":1}],18:[function(require,module,exports){
 let __ = require('lolo'),
     _r = __.record(),
     tree = require('./tree');
@@ -637,28 +1563,34 @@ data.types = {
     value:  'm?a',
     class:  'm?a',
     place:  'm?a',
-    put:    'm?a'
+    put:    'm?a',
+    push:   'f(n,m)'
 };
 
 data.maps = {
     'm?a':      __.id,
 //              {m ?-> a} -> m -> {a}
     'm?{m?a}':  __(_r.map(v => __(v)), _r.apply),
-//              {l} -> m -> {l(m)}
-    'm?{e(m)}': listeners => M => _r.map(__.bindr(M))(listeners)
+//              {l} -> m -> {l(-, m)}
+    'm?{e(m)}': listeners => M => _r.map(__.bindr(M))(listeners),
+//              f -> m -> f(-, m)
+    'f(n,m)':   f => M => __.bindr(M)(f)
 };
+
+/*  ---->   crooked!    */ 
 
 //  .apply : data(m) -> m -> data
 data.apply = 
-    D => M => __(
-        _r.map(
+    D => M => {
+        let D1 = _r.map(
 //          (m ?-> d(m)) -> m -> m ?-> d 
             (Dk, k) => __(Dk, data.maps[data.types[k]]),
 //          (m -> m ?-> d) -> m -> d
             Dk => M => __(Dk(M))(M)
-        ),
-        _r.apply
-    )(D)(M);
+        )(D);
+        D1.push = data.maps['f(n,m)'](D.push);
+        return _r.apply(D1)(M);
+    };
 
 
 //------ Propagated Attributes ------
@@ -688,7 +1620,7 @@ data.link =
 
 module.exports = data;
 
-},{"./tree":13,"lolo":1}],9:[function(require,module,exports){
+},{"./tree":24,"lolo":1}],19:[function(require,module,exports){
 module.exports = dom;
 
 let __ = require('lolo'),
@@ -712,10 +1644,10 @@ dom.tree =
         if (t._domInstance === 'pushforward')
             return t.tree(M0);
         let M1 = t.pull()(M0),
-            node = data.apply(t.node())(M1),
+            nodeData = data.apply(t.node())(M1),
             branch = dom.apply(t.branch())(M1);
         return data.link(
-            node, 
+            nodeData, 
             branch._domInstance === 'map'
                 ? branch.trees(M1)
                 : branch.map(ti => ti.tree(M1))
@@ -732,8 +1664,19 @@ dom.pull =
         return my;
     };
 
-// .push : (tree(data) -> tree(data)) -> dom(m) -> dom(m) 
+// .push : (Node -> Node) -> dom(m) -> dom(m) 
 dom.push = 
+    f => node => {
+        let my = m => IO.node(my)(m);
+        my.tree = m => dom.tree(my);
+        my.node = m => __(node.node, _r.set('push', f))(m);
+        my.data = m => __(node.data, _r.set('push', f))(m);
+        my._domInstance = "pushforward";
+        return my;
+    }
+
+// .pushData : (tree(data) -> tree(data)) -> dom(m) -> dom(m) 
+dom.pushData = 
     f => node => {
         let my = m => IO.node(my)(m);
         my.tree = m => f(node.tree(m)); 
@@ -763,7 +1706,9 @@ function dom (t, a, b) {
         // branches
         branch:     branch,
         // pull-back
-        pull:      __.id,
+        pull:       __.id,
+        // push-forward
+        push:       __.id,
         // IO location
         put:        'body',
         place:      null 
@@ -810,7 +1755,7 @@ dom.map = function (node, pull) {
         pull : pull || __.id,
     };
 
-    let push = i => dom.push(
+    let push = i => dom.pushData(
         ([d, ds]) => [
             d.place ? _r.set('place', [`[${d.place}]`, i])(d) : d,
             ds
@@ -847,13 +1792,101 @@ dom.document = (typeof window !== 'undefined')
     ? window.document
     : IO.document();
 
-},{"./data":8,"./io":10,"./parse":11,"./tree":13,"lolo":1}],10:[function(require,module,exports){
+},{"./data":18,"./io":21,"./parse":22,"./tree":24,"lolo":1}],20:[function(require,module,exports){
+/*------ SVG Drag Events --- 
+
+    Forward mouse events in viewbox coordinates. 
+    
+    Exposed under `IO.drag`, this function should be called upon 
+    element creation as in: 
+    
+        let svg = dom('svg').on('load', IO.drag);
+
+    Each SVG element may then listen to drag events, 
+    exposing mouse position and movement in the event's detail. 
+
+        let circle = dom('rect')
+            .on('dragstart', () => console.log('starting to drag'))
+            .on('drag', (e, io, m) => {
+                let {x, y, dx, dy} = e.detail;
+                console.log(`moving (${dx}, ${dy}) from (${x}, ${y})`);
+            })
+            .on('dragend', () => console.log('finished dragging'));
+
+*///------
+
+module.exports = function (svg) {
+
+    let element = null;
+
+    console.log('loaded')
+    console.log(svg);
+
+    svg.addEventListener('mousedown', start);
+    svg.addEventListener('mousemove', drag);
+    svg.addEventListener('mouseup', end);
+    svg.addEventListener('mouseleave', end);
+
+    let mouse = (evt) => {
+        let pos = coords(evt.clientX, evt.clientY),
+            move = coords(evt.movementX, evt.movementY, 'linear');
+        return {
+            x:  pos.x,      y:  pos.y,
+            dx: move.x,     dy: move.y
+        };
+    };
+
+    let dragEvent = (name, evt) => 
+        new CustomEvent(name, {
+            bubbles: true,
+            detail: mouse(evt) 
+        });
+
+    //--- Dispatch Drag Events --- 
+
+    function start (evt) {
+        element = evt.target;
+        element.dispatchEvent(dragEvent('dragstart', evt));
+    }
+    function drag (evt) {
+        if (element) { 
+            evt.preventDefault();
+            element.dispatchEvent(dragEvent('drag', evt));
+        }
+    }
+    function end (evt) {
+        if (element) 
+            element.dispatchEvent(dragEvent('dragend', evt));
+        element = null;
+    }
+
+    //--- Screen to Viewbox ---
+    
+    function point (x, y) {
+        let point = svg.createSVGPoint();
+        point.x = x; point.y = y;
+        return point;
+    }
+    function coords (x, y, linear) {
+        let pt = point(x, y),
+            mat = svg.getScreenCTM().inverse(); 
+        if (linear) {
+            mat.e = 0; mat.f = 0;
+        }
+        return pt.matrixTransform(mat);
+    }
+
+    return svg;
+}
+
+},{}],21:[function(require,module,exports){
 module.exports = IO; 
 
 let __ = require('lolo'),
     dom = require('./dom'),
     tree = require('./tree'),
-    DOM = require('./DOM');
+    DOM = require('./DOM'),
+    drag = require('./drag');
 
 let _r = __.r;
 
@@ -875,6 +1908,9 @@ IO.push = io => f => io.push(f);
 //.document : () -> document
 IO.document = () => DOM();
 
+//------ Event Wrappers ------- 
+
+IO.drag = __(__.log, drag); 
 
 /*------ Output Stream ------
     
@@ -1226,7 +2262,7 @@ function unbind (ioa, iob) {
     return ioa;
 }
 
-},{"./DOM":7,"./dom":9,"./tree":13,"lolo":1}],11:[function(require,module,exports){
+},{"./DOM":17,"./dom":19,"./drag":20,"./tree":24,"lolo":1}],22:[function(require,module,exports){
 let dom = require('./dom'),
     __ = require('lolo'),
     _r = __.r;
@@ -1327,7 +2363,7 @@ Parse.tag =             // match 'tagname#id.class.class2'
 
 module.exports = Parse; 
 
-},{"./dom":9,"lolo":1}],12:[function(require,module,exports){
+},{"./dom":19,"lolo":1}],23:[function(require,module,exports){
 let __ = require('lolo'),
     _r = __.r;
 
@@ -1468,7 +2504,7 @@ function state (st) {
 
 module.exports = state;
 
-},{"lolo":1}],13:[function(require,module,exports){
+},{"lolo":1}],24:[function(require,module,exports){
 let __ = require('lolo');
 
 /*------ Function Trees ------ 
@@ -1618,7 +2654,7 @@ tree.new = Tree;
 
 module.exports = tree;
 
-},{"lolo":1}],14:[function(require,module,exports){
+},{"lolo":1}],25:[function(require,module,exports){
 let IO = require('./io'),
     state = require('./state'),
     __ = require('lolo');
@@ -1713,5 +2749,5 @@ function App (updates={}, hooks={}) {
 
 module.exports = App;
 
-},{"./io":10,"./state":12,"lolo":1}]},{},[6])(6)
+},{"./io":21,"./state":23,"lolo":1}]},{},[16])(16)
 });
