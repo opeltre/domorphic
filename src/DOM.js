@@ -19,7 +19,7 @@ DOM.link = (N, B) => {
     return N;
 };
 
-//  .unit : (Data, IO e) -> Node
+// .unit : (Data, IO e) -> Node
 DOM.unit = (D, io=IO()) => { 
 
     let N = D.svg

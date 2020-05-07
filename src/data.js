@@ -31,6 +31,8 @@ let data = dom_ => m0 => {
     );
 }
 
+data.tree = dom_ => data(dom_); 
+
 //  Dom(m) :: {m ?-> a}
 let types = {
 tag:    'm?a',
@@ -52,8 +54,8 @@ let fun = y => (typeof y === 'function' && ! y._domInstance)
     ? y 
     : () => y;
 
-//  rfun : lots of fun
-let rfun = {
+//  maps : lots of fun
+let maps = {
     'm?a':          fun,
     'm?{m?a}':      __(fun, _r.map(fun), _r.apply),
     'm?{f(-,m)}':   fs => M => _r.map(__.bindr(M))(fun(fs)(M)),
@@ -74,7 +76,7 @@ data.rmaps = ([n, b], k) =>
 data.node = 
     dom_ => m => __(
         _r.without('branch', 'pull'), 
-        _r.map((dk, k) => rfun[types[k]](dk)),
+        _r.map((dk, k) => maps[types[k]](dk)),
         _r.apply
     )(dom_.self)(m);
 
@@ -83,14 +85,14 @@ data.branch =
     dom_ => m => {
         let b = fun(dom_.self.branch)(m); 
         if (b._domInstance === 'map') 
-            return b.pull(m)
+            return b.self.pull(m)
                 .map(data(b)(m))
                 .map(data.maps) 
         if (b._domInstance === 'rmap') 
             return _r.map(
                 data(b)(m),
                 data.rmaps
-            )(b.pull(m));
+            )(b.self.pull(m));
         else 
             return b.map(n => data(n)(m));
     };

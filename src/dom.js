@@ -17,59 +17,18 @@ dom.pull =
         return my;
     };
 
-// .push : (tree(data) -> tree(data)) -> dom(m) -> dom(m) 
-dom.push = 
-    f => node => {
-        let my = m => IO.node(my)(m);
-        my.tree = m => f(node.tree(m)); 
-        my.data = m => f([node.data(m), []])[0];
-        my._domInstance = "pushforward";
-        return my;
-    }
-
-
 //------ dom(m) :: m -> node ------
 
 function dom (t, a, b) {
-        
-    let {tag, attr, branch, other} = parse.args(t, a, b);
-
-    let self = {
-        // node 
-        tag:        tag,
-        svg:        tag === 'svg' || tag === 'g',
-        attr:       attr,
-        prop:       {},
-        style:      {},
-        on:         {},
-        html:       '',
-        value:      '',
-        class:      '',
-        // IO location
-        put:        'body',
-        place:      null 
-        // pull-back
-        pull:       __.id,
-        // push-forward 
-        push:       __.id,
-        // branches
-        branch:     branch,
-    };
-   
-    __.logs('other:')(other);
-    Object.assign(self, other); 
+    
+    let self = parse(t, a, b); 
 
     //  my : m -> node
     let my = m => IO.node(my)(m);
-   
-    //.tree : m -> tree(data)
-    my.tree = dom.tree(my);
 
-    //.node : m -> data(m)
-    my.node = () => _r.without('branch', 'pull')(self);
-
-    //.data : m -> data 
-    my.data = M => __(self.pull, data.apply(my.node()))(M);
+    //.data : m -> Tree(d)
+    my.data = data(my);
+    my.data.node = data.node(my);
 
     //.append : () -> ()
     my.append = (...bs) => {
@@ -81,6 +40,7 @@ function dom (t, a, b) {
     my.map = pull => dom.map(my, pull);
 
     my._domInstance = 'node';
+    my.self = self;
 
     let records = ['on', 'attr', 'style'];
     return __.getset(my, self, {records});
@@ -96,35 +56,14 @@ dom.map = function (node, pull) {
         pull : pull || __.id,
     };
 
-    let push = i => dom.push(
-        ([d, ds]) => [
-            d.place ? _r.set('place', [`[${d.place}]`, i])(d) : d,
-            ds
-        ]
-    );
-    let get = i => dom.pull(ms => ms[i])
-
-    //  my : m -> [node] 
+    //  my : m -> [Node] 
     let my = M => __(
         self.pull,
         __.map((mi, i) => push(i)(self.node)(mi))
     )(M);
-    
-    //.get : int -> [m'] -> node  
-    my.get = i => __(push(i), get(i))(self.node);
 
-    //.trees : m -> [tree(data)]
-    my.trees = M => __(
-        self.pull, 
-        __.map((mi, i) => push(i)(self.node).tree(mi)),
-    )(M);
+    my.self = self;
     
-    //.data : m -> data 
-    my.data = M => __(
-        self.pull,
-        __.map((mi, i) => push(i)(self.node).data(mi)),
-    )(M);
-
     my._domInstance = 'map';
     return __.getset(my, self);
 }

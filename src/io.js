@@ -2,7 +2,7 @@ module.exports = IO;
 
 let __ = require('lolo'),
     dom = require('./dom'),
-    tree = require('./tree'),
+    data = require('./data'),
     DOM = require('./DOM');
 
 let _r = __.r;
@@ -31,7 +31,7 @@ IO.document = () => DOM();
     This section pushes morphisms to model-dependent DOM operations,
     all methods having the following type: 
 
-        IO.act : dom(m) -> m -> IO(m)
+        IO.act : Dom(m) -> m -> IO(m)
 
     They may then be bound to any active IO stream, which is equivalent 
     to calling the IO instance's method of the same name. 
@@ -48,50 +48,50 @@ IO.document = () => DOM();
 *///-------------------------
 
 //.node : dom(m) -> m -> Node
-IO.node = node =>  __.pipe(dom.tree(node), DOM.tree);
+IO.node = dom_ =>  __.pipe(Data.tree(dom_), DOM.tree);
 
-IO.put = (node, k, place) => m => {
+IO.put = (dom_, k) => m => {
     let io = IO(),
-        data = dom.tree(node)(m),
-        key = k || data[0].put,
-        n = DOM.tree(data, io, place);
+        td = data(dom_)(m),
+        key = k || td[0].put,
+        n = DOM.tree(td, io);
     return io.select(key)
         .push(n0 => n0.appendChild(n))
         .return(m);
 }
 
-IO.set = (node, k) => m => {
+IO.set = (dom_, k) => m => {
     let io = IO(),
-        data = node.data(m),
-        key = k || data.place;
+        d = data.node(dom_)(m),
+        key = k || d.place;
     return io.select(key)
-        .push(n => DOM.set(n, data))
+        .push(n => DOM.set(n, d))
         .return(m);
 };
 
-IO.place = (node, k) => m => {
+IO.place = (dom_, k) => m => {
     let io = IO(),
-        place = k || node.data(m).place;
+        place = k || data.node(dom_)(m).place;
     return io.select(place, strict=false)
         .bind(n => n 
-            ? IO.replace(node, place)(m) 
-            : IO.put(node, 0, place)(m)
+            ? IO.replace(dom_, place)(m) 
+            : IO.put(dom_)(m)
         );
 };
 
-IO.replace = (node, k) => m => {
+IO.replace = (dom_, k) => m => {
     let io = IO(),
-        data = dom.tree(node)(m),
-        key = k || data[0].place;
+        td = data(dom_)(m),
+        key = k || td[0].place;
     io.select(key);
-    let n1 = DOM.tree(data, io, key);
+    let n1 = DOM.tree(td, io);
     return io.push(n0 => n0.replaceWith(n1))
         .return(m);
 }
 
-IO.remove = (node) => m => {
+IO.remove = (dom_) => m => {
     let io = IO(); 
-        key = node._domInstance ? node.data(m).place : node
+        key = dom_._domInstance ? data.node(dom_)(m).place : dom_
     return io.select(key)
         .do(n => n.remove())
         .do(n => remove(io, key))
@@ -316,7 +316,7 @@ function IO (doc) {
 
 //------ Node Stack ------
 
-function keep (io, k, n, strict=true) {
+function keep (io, k, n) {
     if (typeof k === 'string')
         io.stack[k] = n;
     else if (Array.isArray(k)) {
@@ -334,7 +334,7 @@ function select (io, k, strict=true) {
     else if (Array.isArray(k) && io.stack[k[0]])
         n = io.stack[k[0]][k[1]];
 
-    if ((n instanceof Node && n.parentNode)|| !strict) 
+    if ((n instanceof Node && n.parentNode) || !strict) 
         return n; 
     if (strict) {
         let str = k => typeof k === 'string' ? k : k.join('->');

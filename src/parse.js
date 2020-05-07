@@ -2,98 +2,108 @@ let dom = require('./dom'),
     __ = require('lolo'),
     _r = __.r;
 
-let isFunction = 
-    y => typeof y === 'function' && ! y._domInstance;
+let isFunction = y => typeof y === 'function' && ! y._domInstance, 
+    isBranches = b => Array.isArray(b) || isFunction(b);
 
-let Parse = {};
+let parse = (t, a={}, b=[]) => {
 
-Parse.args =        // dom('tag#id.class1.class2', [ ...bs ])
+    if (t._domInstance)
+        return t.self;
+
+    if (isBranches(a))
+        [a, b] = [{}, a];
+
+    let branch = b.map(Parse.branch),
+        {tag, id, classes, place, put} = Parse.tag(t);
     
-    (tag, a={}, b=[]) => {
+    let self = {
+        // node 
+        tag:        tag,
+        svg:        tag === 'svg' || tag === 'g',
+        attr:       {},
+        prop:       {},
+        style:      {},
+        on:         {},
+        html:       '',
+        value:      '',
+        class:      '',
+        // IO location
+        put:        put || 'body' 
+        place:      place || null
+        // pull-back
+        pull:       __.id,
+        // push-forward 
+        push:       __.id,
+        // branches
+        branch:     branch,
+    };
 
-        let isBranches = 
-            a => (Array.isArray(a) || isFunction(a));
-        if (isBranches(a))
-            [a, b] = [{}, a];
-        
-        b = b.map(Parse.branch);
+    if (id) 
+        _r.assign({id})(a);
 
-        let {classes, tagname, id, other} = Parse.tag(tag);
+    if (classes.length) {
+        let a_class = a.class, 
+            getClass = a_class 
+                ?  M => __(a_class)(M) + ' ' + classes.join(' ')
+                : classes.join(' ');
+        _r.assign({class: getClass})(a);
+    }
+
+    let other = ['html', 'value', 'svg', 'style'],
+    self = _r.assign(_r.pluck(...other)(a))(self);
+    attr = _r.without(...other)(a);
         
-        if (id) 
-            Object.assign(a, {id});
-        
-        if (classes.length) {
-            let a_class = a.class, 
-                getClass = a_class 
-                    ?  M => __(a_class)(M) + ' ' + classes.join(' ')
-                    : classes.join(' ');
-            Object.assign(a, {class: getClass});
+    let on = {};
+    _r.forEach((v, k) => {
+        if (/^on[\w]*/.test(k)) {
+            on[k.replace(/^on/, '')] = v;
+            delete attr[k];
         }
+    })(attr);
+    self = _r.assign({on}, {attr})(self);
 
-        let otherKeys = ['html', 'value', 'svg', 'style'];
-        
-        Object.assign(other, _r.pluck(...otherKeys)(a));
-        attr = _r.without(...otherKeys)(a);
+    return self;
+}
 
-        let on = {};
-
-        _r.forEach((v, k) => {
-            if (/^on[\w]*/.test(k)) {
-                on[k.replace(/^on/, '')] = v;
-                delete attr[k];
-            }
-        })(attr);
-
-        Object.assign(other, {on});
-        other = _r.filter(v => typeof v !== 'undefined')(other);
-
-        return {tag: tagname, attr, branch: b, other};
-    };
+parse.branch = b => {
+    if (typeof b === 'string' || isFunction(b)) 
+        return dom('text').html(b)
+    if (Array.isArray(b)) 
+        return (typeof b[0] === 'function')
+            ? b 
+            : dom(...b)
+    return b
+};
 
 
-Parse.branch = 
+parse.tag = string => {
 
-    b => {
-        let t = x => (typeof x);
-        if (t(b) === 'string' || isFunction(b)) 
-            return dom('text').html(b)
-        if (Array.isArray(b)) 
-            return (t(b[0]) === 'function')
-                ? b 
-                : dom(...b)
-        return b
-    };
+    let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)|(:[\w\-]*)|(>\s[\w\-]*)/g,
+        matches = string.match(re);
 
+    let classes = [],
+        tag = 'div',
+        id = null,
+        place = null,
+        put = null;
 
-Parse.tag =             // match 'tagname#id.class.class2' 
+    matches.forEach(m => {
+        if (m[0] === '#')
+            id =  m.slice(1,);
+        else if (m[0] === '.')
+            classes.push(m.slice(1,));
+        else if (m[0] === ':') {
+            place = m.slice(1,);
+            classes.push(m.slice(1,));
+        }
+        else if (m[0] === '>') 
+            put = m.slice(2,);
+        else
+            tag = m.length ? m : 'div';
 
-    tag => {
-        let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)|(:[\w\-]*)|(>\s[\w\-]*)/g,
-            matches = tag.match(re);
+    });
 
-        let classes = [],
-            tagname = 'div',
-            id = null,
-            other = {}; 
+    return {tag, id, classes, place, put}
+};
 
-        matches.forEach(m => {
-            if (m[0] === '#')
-                id =  m.slice(1,);
-            else if (m[0] === '.')
-                classes.push(m.slice(1,));
-            else if (m[0] === ':') {
-                other.place = m.slice(1,);
-                classes.push(m.slice(1,));
-            }
-            else if (m[0] === '>') 
-                other.put = m.slice(2,);
-            else
-                tagname = m.length ? m : 'div';
-
-        });
-
-        return {classes, tagname, id, other}
-    };
-
-module.exports = Parse; 
+module.exports = parse; 
