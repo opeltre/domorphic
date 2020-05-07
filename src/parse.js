@@ -3,6 +3,7 @@ let dom = require('./dom'),
     _r = __.r;
 
 let isFunction = y => typeof y === 'function' && ! y._domInstance, 
+    toFunction = y => isFunction(y) ? y : () => y;
     isBranches = b => Array.isArray(b) || isFunction(b);
 
 let parse = (t, a={}, b=[]) => {
@@ -42,11 +43,10 @@ let parse = (t, a={}, b=[]) => {
         _r.assign({id})(a);
 
     if (classes.length) {
-        let a_class = a.class, 
-            getClass = a_class 
-                ?  M => __(a_class)(M) + ' ' + classes.join(' ')
-                : classes.join(' ');
-        _r.assign({class: getClass})(a);
+        let getClass = a.class 
+            ?  M => toFunction(a.class)(M) + ' ' + classes.join(' ')
+            : classes.join(' ');
+        _r.set('class', getClass)(a); 
     }
 
     let other = ['html', 'value', 'svg', 'style'],
