@@ -7,30 +7,6 @@ let __ = require('lolo'),
     IO = require('./io'),
     _r = __.r;
 
-// .apply : (m ?-> dom(m)) -> m -> dom(m)
-dom.apply = 
-    n => (typeof n ==='function' && ! n._domInstance)
-        ? n
-        : () => n;
-
-// .tree : dom(m) -> m -> tree(data)
-dom.tree = 
-    t => M0 => {
-        if (t._domInstance === 'pullback')
-            return t.tree(M0);
-        if (t._domInstance === 'pushforward')
-            return t.tree(M0);
-        let M1 = t.pull()(M0),
-            node = data.apply(t.node())(M1),
-            branch = dom.apply(t.branch())(M1);
-        return data.link(
-            node, 
-            branch._domInstance === 'map'
-                ? branch.trees(M1)
-                : branch.map(ti => ti.tree(M1))
-        );
-    };
-
 // .pull: (m -> m') -> dom(m') -> dom(m)
 dom.pull = 
     g => node => {
@@ -109,7 +85,6 @@ function dom (t, a, b) {
     let records = ['on', 'attr', 'style'];
     return __.getset(my, self, {records});
 }
-
 
 
 //------ map: (m -> Node) -> [m] -> [Node] ------

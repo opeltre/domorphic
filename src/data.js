@@ -6,29 +6,30 @@ let __ = require('lolo'),
     
     Compute node attributes from dom instance parameters. 
 
-        data.apply : Dom(m) -> m -> Data 
+        data: Dom(m) -> m -> Tree(d) 
 
-    `Data` is an instance of the tree type class:
+    The above factorising through: 
         
-        data.node :     Data -> d 
-        data.branch :   Data -> [d] 
-        data.link :     (d, [d]) -> Data
+        data.node :     Dom(m) -> m -> d 
+        data.branch :   Dom(m) -> m -> [Tree(d)]
 
-    and `data.apply` factorises through `data.apply.node` 
-    and `data.apply.branch`. 
+        data.link :     (d, [Tree(d)]) -> Tree(d)
 
-    N.B. This is done in a rather similar fashion as: 
+    N.B. Mapping `Dom(m)` to functions is done in a similar fashion as: 
 
         _r.apply : {m -> a} -> m -> {a}
 
-    except we are dealing with union types of the form 
-    `b || m -> b`, which we'll denote by `m ?-> b`. 
+    except we are dealing with union types of the form `b || m -> b`, 
+    which we denote by `m ?-> b`. 
 */ 
 
-let data = dom_ => m => data.link(
-    data.node(dom_)(m),
-    data.branch(dom_)(m)
-);
+let data = dom_ => m0 => {
+    let m1 = dom_.self.pull(m0); 
+    return data.link(
+        data.node(dom_)(m1),
+        data.branch(dom_)(m1)
+    );
+}
 
 //  Dom(m) :: {m ?-> a}
 let types = {
@@ -72,7 +73,7 @@ data.rmaps = ([n, b], k) =>
 //  .node : Dom(m) -> m -> d  
 data.node = 
     dom_ => m => __(
-        _r.without('branch'), 
+        _r.without('branch', 'pull'), 
         _r.map((dk, k) => rfun[types[k]](dk)),
         _r.apply
     )(dom_.self)(m);
@@ -90,7 +91,7 @@ data.branch =
                 data(b)(m),
                 data.rmaps
             )(b.pull(m));
-        else
+        else 
             return b.map(n => data(n)(m));
     };
 
