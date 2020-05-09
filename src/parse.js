@@ -14,9 +14,9 @@ let parse = (t, a={}, b=[]) => {
     if (isBranches(a))
         [a, b] = [{}, a];
 
-    let branch = b.map(Parse.branch),
-        {tag, id, classes, place, put} = Parse.tag(t);
-    
+    let {tag, id, classes, place, put} = parse.tag(t),
+        branch = b.map(parse.branch);
+
     let self = {
         // node 
         tag:        tag,
@@ -29,14 +29,14 @@ let parse = (t, a={}, b=[]) => {
         value:      '',
         class:      '',
         // IO location
-        put:        put || 'body' 
-        place:      place || null
+        put:        put || 'body',
+        place:      place || null,
         // pull-back
         pull:       __.id,
         // push-forward 
         push:       __.id,
         // branches
-        branch:     branch,
+        branch:     branch
     };
 
     if (id) 
@@ -49,7 +49,7 @@ let parse = (t, a={}, b=[]) => {
         _r.set('class', getClass)(a); 
     }
 
-    let other = ['html', 'value', 'svg', 'style'],
+    let other = ['html', 'value', 'svg', 'style'];
     self = _r.assign(_r.pluck(...other)(a))(self);
     attr = _r.without(...other)(a);
         

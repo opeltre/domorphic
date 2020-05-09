@@ -1,28 +1,35 @@
 let __ = require('lolo'),
-    _r = __.r;
-//    _t = require('./tracer');
+    _r = __.r,
+    Tracer = require('./tracer');
 
-/*------ Relations ------ 
+/*------ Check ------ 
     
+    Recursively compare two input objects.
+
+    This is done inside a monad `T` composing `Maybe` 
+    with the `Writer` monad to trace errors: 
+
+        check : Couple a a' -> T () 
+
+    Note the natural bijection between `Maybe ()` and `Bool`,
+    so that `T ()` just represents verbose booleans.  
+
     Check :: {
-        type:   T Couple a a' -> T String
-        equal:  T Pair a -> T Bool 
-        array:  T Pair [b] -> T Bool 
-        record: T Pair {b} -> T Bool 
+        type:   Couple a a' -> T String
+        equal:  Pair a -> T () 
+        array:  Pair [b] -> T () 
+        record: Pair {b} -> T () 
     }
 
     T :: {
         bind:   T a -> (a -> T b) -> T b
         return: b -> T b
-        map:    (T a -> T b) -> [T a] -> [T b] 
-        rmap:   (T a -> T b) -> {T a} -> {T b}
-        all:   [T Bool] -> T Bool
-        rall:  {T Bool} -> T Bool
+        map:    (a -> T b) -> [a] -> [T b] 
+        rmap:   (a -> T b) -> {a} -> {T b}
+        all:   [T b] -> T ()
+        rall:  {T b} -> T ()
     }
     
-    To define a map: 
-    
-        Couple a a' -> T Bool 
 *///------ 
 
 //  type : a -> String
@@ -31,28 +38,41 @@ let type = __(
     str => str.replace('object', 'record')
 );
 
-//  check : Couple a a' -> T Bool 
-let check = (pair, opt) => {
-    return recursive()(pair); 
+//  main : Couple a a' -> T Bool 
+let main = (pair, opt) => {
+    return recursive(...parse(opt))(pair); 
 };
+main.sub = (pair) => {
+    let C = _r.set('record', Tcheck.subrecord)(Tcheck);
+    return recursive(C)(pair);
+}
 
-let recursive = (T=Maybe, C=check) => { 
+let recursive = (C=Tcheck, T=Tracer) => { 
     let next = {
-        array:  ps => __(T.map(recursive(T, C)), T.all)(ps),
-        record: ps => __(T.rmap(recursive(T, C)), T.rall)(ps)
+        array:  ps => __(T.map(recursive(C, T)), T.all)(ps),
+        record: ps => __(T.rmap(recursive(C, T)), T.rall)(ps)
     };
     return pair => T.bind(
         C.type(pair), 
         t => T.bind(
             (C[t] || C.equal)(pair), 
-            next[t] 
-                ? () => next[t](Pair[t](pair)) 
-                : T.return
+            mb => next[t]
+                ? next[t](Pair[t](pair))
+                : T.return(mb)
         )
     );
 };
 
-module.exports = check;
+let parse = options => {
+    let C = _r.map(__.id)(check);
+    if (/subr/.test(options)) 
+        C = _r.set('record', C.subrecord)(C);
+    if (/suba/.test(options))
+        C = _r.set('array', C.subarray)(C);
+    return [C, Tracer];
+}
+
+module.exports = main;
 
 //------ Pair ------ 
 
@@ -80,13 +100,15 @@ Maybe.rmap = f => _r.map(Maybe.fmap(f));
 Maybe.all = __.reduce((a, b) => a && b, true);
 Maybe.rall = _r.reduce((a, b) => a && b, true);
 
-//------ Checks ------
+//------ Checks Maybe ------
+
+let check = {}; 
 
 check.type = ([a, b]) => 
     type(a) === type(b) ? type(a) : null;
 
 check.equal = ([a, b]) => 
-    type(a) === 'function' ? true : a === b;
+    type(a) === 'function' ? true : a === b || null;
 
 check.array = ([a, b]) => a.length === b.length || null;
 
@@ -96,7 +118,7 @@ check.record = ([a, b]) => {
     let [da, db] = diffKeys([a, b]);
     return (_r.isEmpty(da) && _r.isEmpty(db)) || null;
 }
-check.subrecord = ([a, b]) => _r.isEmpty(diffKeys([a, b])) || null;
+check.subrecord = ([a, b]) => _r.isEmpty(diffKeys([a, b])[0]) || null;
 
 function diffKeys ([a, b]) {
     let diff = (x, y) => type(x) !== 'undefined' && type(y) === 'undefined';
@@ -106,15 +128,26 @@ function diffKeys ([a, b]) {
     ];
 }
 
-//------ Show Pairs ------
+//------ Trace ------
 
-//  show : Pair a -> [String]
-let show = ([e, o], str=__.id) => ['\n\n', ''
+let json = r => JSON.stringify(r, null, 2);
+
+//  msg : Pair a -> [String]
+let msg = ([e, o], str=__.id) => ['\n\n', ''
     + `\t> expected: ${str(e)}\n`
     + `\t> obtained: ${str(o)}\n`
 ];
 
-show.equal  = p => show(p);
-show.len    = p => ['in length:', ...show(p, arr => arr.length)];
-show.type   = p => ['in type:', ...show(p, type)];
-show.keys   = p => ['in keys:', ...show(p, r => JSON.stringify(r, null, 2))];
+msg.type   = p => ['in type:', ...msg(p, type)];
+msg.equal  = p => msg(p);
+msg.array  = p => ['in length:', ...msg(p, arr => arr.length)];
+msg.record = p => ['in keys:', ...msg(diffKeys(p), json)];
+
+msg.subarray = msg.array;
+msg.subrecord = msg.record;
+
+Tcheck = _r.map(
+    (ck, k) => Tracer.writes(msg[k])(ck)
+)(check); 
+
+_r.assign(Tcheck)(main);
