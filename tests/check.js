@@ -39,10 +39,10 @@ let type = __(
 );
 
 //  main : Couple a a' -> T Bool 
-let main = (pair, opt) => {
-    return recursive(...parse(opt))(pair); 
+let main = (a, b, opt) => {
+    return recursive(...parse(opt))([a, b]); 
 };
-main.sub = (pair) => {
+main.sub = (...pair) => {
     let C = _r.set('record', Tcheck.subrecord)(Tcheck);
     return recursive(C)(pair);
 }
