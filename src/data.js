@@ -23,15 +23,15 @@ let __ = require('lolo'),
     which we denote by `m ?-> b`. 
 */ 
 
-let data = dom_ => m0 => {
-    let m1 = dom_.self.pull(m0); 
+let data = self => m0 => {
+    let m1 = self.pull(m0); 
     return data.link(
-        data.node(dom_)(m1),
-        data.branch(dom_)(m1)
+        data.node(self)(m1),
+        data.branch(self)(m1)
     );
 }
 
-data.tree = dom_ => data(dom_); 
+data.tree = self => data(self); 
 
 //  Dom(m) :: {m ?-> a}
 let types = {
@@ -50,7 +50,7 @@ tag:    'm?a',
 };
 
 //  fun : (m ?-> a) -> m -> a 
-let fun = y => (typeof y === 'function' && ! y._domInstance)
+let fun = y => typeof y === 'function'
     ? y 
     : () => y;
 
@@ -74,21 +74,21 @@ data.rmaps = ([n, b], k) =>
 
 //  .node : Dom(m) -> m -> d  
 data.node = 
-    dom_ => m => __(
+    self => m => __(
         _r.without('branch', 'pull'), 
         _r.map((dk, k) => maps[types[k]](dk)),
         _r.apply
-    )(dom_.self)(m);
+    )(self)(m);
 
 //  .branch : Dom(m) -> m -> [Tree(d)]
 data.branch = 
-    dom_ => m => {
-        let b = fun(dom_.self.branch)(m); 
-        if (b._domInstance === 'map') 
-            return b.self.pull(m)
+    self => m => {
+        let b = fun(self.branch)(m); 
+        if (b.type === 'map') 
+            return b.pull(m)
                 .map(data(b)(m))
                 .map(data.maps) 
-        if (b._domInstance === 'rmap') 
+        if (b.type === 'rmap') 
             return _r.map(
                 data(b)(m),
                 data.rmaps

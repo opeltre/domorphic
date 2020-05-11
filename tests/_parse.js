@@ -35,18 +35,20 @@ exports.branch = () => {
 
 exports.attr_and_branch = () => {
     let expect = {
-        attr: {tag: 'main', style: 'color: blue;', height: '100'},
+        tag: 'main',
+        attr: {height: '100'}, 
+        style: {color: 'blue'},
         branch: [
             {tag: 'h1', html: 'testing'}, 
-            {tag: 'p', html: 'is really fun'}
+            {tag: 'p',  html: 'is really fun'}
         ]
-    }
+    };
     let obtain = parse('main', 
-        {style: 'color: blue;', height: '100'}, 
+        {height: '100', style: {color: 'blue'}},
         [
-            ['h1', {html: 'testing'}], 
-            ['p', {html: 'is really fun'}]
+            ['h1',  {html: 'testing'}], 
+            ['p',   {html: 'is really fun'}]
         ]
     );
-    checks.sub(expect, obtain);
+    return check.sub(expect, obtain);
 }

@@ -14,8 +14,8 @@ let show = {}
 
 show.head = (files) => {
     let n = _r.keys(files).length; 
-    return '\n' 
-        + `\t${n} file${n > 1 ? 's' : ''} to test\n`;
+    return '' 
+        + `\t${n} file${n > 1 ? 's' : ''} to test:\n`;
 }
 
 show.units = (file) => {

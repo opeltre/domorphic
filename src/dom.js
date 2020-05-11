@@ -7,28 +7,26 @@ let __ = require('lolo'),
     IO = require('./io'),
     _r = __.r;
 
-// .pull: (m -> m') -> dom(m') -> dom(m)
-dom.pull = 
-    g => node => {
-        let my = m => node(g(m));
-        my.tree = m => node.tree(g(m));
-        my.data = m => node.data(g(m));
-        my._domInstance = "pullback"
-        return my;
-    };
+// .pull : (a -> b) -> Dom(b) -> Dom(a)
+dom.pull = g => dom_ => dom(dom_).pull(g);
+
+// .push : (Node -> Node) -> Dom(a) -> Dom(a)
+dom.push = f => dom_ => dom(dom_).push(f);
 
 //------ dom(m) :: m -> node ------
 
-function dom (t, a, b) {
+function dom (...args) {
     
-    let self = parse(t, a, b); 
+    let self = parse(...args); 
+    self.type = 'node';
 
     //  my : m -> node
     let my = m => IO.node(my)(m);
 
     //.data : m -> Tree(d)
-    my.data = data(my);
-    my.data.node = data.node(my);
+    my.data = data(self);
+    //.data.node : m -> d 
+    my.data.node = data.node(self);
 
     //.append : () -> ()
     my.append = (...bs) => {
@@ -39,7 +37,6 @@ function dom (t, a, b) {
     //.map : (m' -> m) -> [dom](m')
     my.map = pull => dom.map(my, pull);
 
-    my._domInstance = 'node';
     my.self = self;
 
     let records = ['on', 'attr', 'style'];
@@ -50,10 +47,11 @@ function dom (t, a, b) {
 //------ map: (m -> Node) -> [m] -> [Node] ------
 
 dom.map = function (node, pull) {
-    
+
     let self = {
         node :  node,
-        pull : pull || __.id,
+        pull :  pull || __.id,
+        type :  'map'
     };
 
     //  my : m -> [Node] 
@@ -64,7 +62,6 @@ dom.map = function (node, pull) {
 
     my.self = self;
     
-    my._domInstance = 'map';
     return __.getset(my, self);
 }
 

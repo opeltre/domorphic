@@ -1,14 +1,16 @@
+module.exports = parse; 
+
 let dom = require('./dom'),
     __ = require('lolo'),
     _r = __.r;
 
-let isFunction = y => typeof y === 'function' && ! y._domInstance, 
+let isFunction = y => typeof y === 'function', 
     toFunction = y => isFunction(y) ? y : () => y;
     isBranches = b => Array.isArray(b) || isFunction(b);
 
-let parse = (t, a={}, b=[]) => {
+function parse (t, a={}, b=[]) {
 
-    if (t._domInstance)
+    if (t.self)
         return t.self;
 
     if (isBranches(a))
@@ -29,12 +31,14 @@ let parse = (t, a={}, b=[]) => {
         value:      '',
         class:      '',
         // IO location
-        put:        put || 'body',
-        place:      place || null,
+        put:        put     || 'body',
+        place:      place   || null,
         // pull-back
         pull:       __.id,
         // push-forward 
         push:       __.id,
+        // type:
+        type:       'node',
         // branches
         branch:     branch
     };
@@ -71,7 +75,7 @@ parse.branch = b => {
     if (Array.isArray(b)) 
         return (typeof b[0] === 'function')
             ? b 
-            : dom(...b)
+            : parse(...b)
     return b
 };
 
@@ -105,5 +109,3 @@ parse.tag = string => {
 
     return {tag, id, classes, place, put}
 };
-
-module.exports = parse; 
