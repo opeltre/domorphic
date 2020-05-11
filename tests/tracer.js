@@ -88,8 +88,8 @@ let logs = {
     map:    i => `[${i}] -> `,
     rmap:   k => `{${k}} -> `,
     all:    {
-        success: () => '',
-        failure: () => ''
+        success: () => '+',
+        failure: () => '-'
     }
 }; 
 
@@ -130,8 +130,8 @@ Tracer.all = all(__.reduce);
 //    .rall : {T a} -> T ()
 Tracer.rall = all(_r.reduce);
 
-['map', 'rmap', 'all', 'rall'].forEach(method => 
-    Tracer[method].writes = log => __.bindr(log)(Tracer[method])
+['map', 'rmap', 'all', 'rall'].forEach(m => 
+    Tracer[m].writes = log => __.bindr(log)(Tracer[m])
 );
     
 module.exports = Tracer;

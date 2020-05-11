@@ -1,85 +1,40 @@
 let __ = require('lolo'),
-    _r = __.r, 
+    _r = __.r,
+    Show = require('./show'),
     Tracer = require('./tracer');
 
 let parse = require('./_parse');
 
 let files = {
-    parse : parse
+   parse : parse
 };
 
 //------ Test ------
 
-let test = () => {
-    let ts = Tracer.rmap(
-        (u, n) => test.file(u, n),
-        show.file.rmap
-    )(files); 
-    let ta = [true, [show.test.head()]],
-        main = () => Tracer.rall(ts, show.test);
-    let tb = Tracer.log(Tracer.bind(ta, main));
+let test = (files) => {
+    let testError = '\tOh no!',
+        show = Show.files(),
+        rall = Tracer.rall.writes(show.rall),
+        rmap = Tracer.rmap.writes(show.rmap);
+    let ta = [true, [Show.head(files)]],
+        ts = rmap(test.file)(files),
+        tb = Tracer.bind(ta, () => rall(ts));
+    Tracer.log(tb); 
+    //--- throw ---
     if (tb[0] === null) 
-        throw Error('Tests fail.');
-    return tb;
+        throw(testError);
 }
 
 test.file = (units, file) => {
-    let ts = Tracer.rmap(
-        unit => Tracer.try(unit)(), 
-        (unit, name) => show.unit(unit, file)
-    )(units);
-    let tb = Tracer.rall(ts, show.file);
-    return tb;
+    let show = Show.units(file),
+        rall = Tracer.rall.writes(show.rall),
+        rmap = Tracer.rmap.writes(show.rmap);
+    return rall(rmap(
+        unit => Tracer.try(unit)() 
+    )(units));
 }
 
-//------ Strings ------ 
-
-let errors = {
-    file: f => Error(`File ${f} failed`) 
-} 
-
-let show = {
-
-unit : (unit, file) => {
-        let hr = [...Array(16)].join('-');
-        return '\n' + hr + ' Unit Error ' + hr + '\n\n'
-            + `> in file '_${file}.js'\n`
-            + `> in unit '${unit}'\n`;
-},
-file : {
-    success : ({pass, fail, time}) => '\n'
-        + `(+) ${pass} units passed in ${time} ms`,
-
-    failure : ({pass, fail, time}) => '\n'
-        + `(+) ${pass} units passed\n`
-        + `(-) ${fail} units failed in ${time} ms`,
-    
-    rmap : (file) => {
-        let hr = [...Array(22)].join("..");
-        return hr; 
-    }
-},
-test : {
-    success : ({time}) => {
-        let hr = '\n' + [...Array(22)].join('- ') + '\n'
-        return '\n' + hr 
-            + `All tests passed in ${time} ms.`
-            + hr ;
-    },
-    failure : ({fail, pass, time}) => {
-        let hr = '\n' + [...Array(22)].join('==') + '\n';
-        return '\n' + hr
-            + `\t (+) ${pass} files passed\n`
-            + `\t (-) ${fail} files failed \tin ${time} ms.`
-            +  hr;
-    },
-    head : () => {
-        let n = _r.keys(files).length; 
-        return `\n> Testing ${n} file${n > 1 ? 's' : ''}\n\n`;
-    }
-}
-}; 
 
 //------ Run ------
 
-test(); 
+test(files); 
