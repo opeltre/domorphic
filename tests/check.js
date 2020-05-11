@@ -52,7 +52,7 @@ main.sub = (a, b) => {
         C = _r.set('record', Tcheck.subrecord)(Tcheck)
     return Tracer.bind(
         tpair,
-        recursive(C)
+        Tracer.try(recursive(C))
     );
 };
 

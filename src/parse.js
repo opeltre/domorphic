@@ -10,68 +10,72 @@ let isFunction = y => typeof y === 'function',
 
 function parse (t, a={}, b=[]) {
 
+    //--- arguments --- 
+
+    // (dom('circle'))
     if (t.self)
         return t.self;
-
+    // ([t, {as}, [bs])
+    if (Array.isArray(t))
+        return parse(...t)
+    // (t, [bs]) 
     if (isBranches(a))
         [a, b] = [{}, a];
 
-    let {tag, id, classes, place, put} = parse.tag(t),
-        branch = b.map(parse.branch);
+    //------ 
+
+    let {tag, id, classes, place, put} = parse.tag(t);
+
+    let branch = isFunction(b)
+        ? __(b, __.map(parse)) 
+        : b.map(parse)
+
+    //--- 
 
     let self = {
-        // node 
         tag:        tag,
         svg:        tag === 'svg' || tag === 'g',
-        attr:       {},
-        prop:       {},
-        style:      {},
-        on:         {},
-        html:       '',
-        value:      '',
+        attr:       id ? {id} : {},
         class:      '',
+        classes:    classes.concat(a.classes || []),
         // IO location
         put:        put     || 'body',
         place:      place   || null,
-        // pull-back
-        pull:       __.id,
-        // push-forward 
-        push:       __.id,
         // type:
         type:       'node',
         // branches
         branch:     branch
     };
+    
+    let join = {
+        html:       a.html  || '',
+        value:      a.value ||'',
+        style:      a.style || {},
+        prop:       a.prop  || {},
+        on:         a.on    || {},
+        // pull-back
+        pull:       a.pull  || __.id,
+        // push-forward 
+        push:       a.push  || __.id
+    }; 
 
-    if (id) 
-        _r.assign({id})(a);
+    let attr = _r.without(..._r.keys(join))(a);
+    
+    let onkeys = _r.keys(attr)
+        .filter(k => /^on/.test(k));
 
-    if (classes.length) {
-        let getClass = a.class 
-            ?  M => toFunction(a.class)(M) + ' ' + classes.join(' ')
-            : classes.join(' ');
-        _r.set('class', getClass)(a); 
-    }
-
-    let other = ['html', 'value', 'svg', 'style'];
-    self = _r.assign(_r.pluck(...other)(a))(self);
-    attr = _r.without(...other)(a);
-        
-    let on = {};
-    _r.forEach((v, k) => {
-        if (/^on[\w]*/.test(k)) {
-            on[k.replace(/^on/, '')] = v;
+    onkeys
+        .forEach((l, k) => {
+            join.on[k.slice(2)] = l;
             delete attr[k];
-        }
-    })(attr);
-    self = _r.assign({on}, {attr})(self);
+        });
 
-    return self;
+    self.attr = _r.update(attr)(self.attr);
+
+    return _r.update(join)(self);
 }
 
 parse.branch = b => {
-    if (typeof b === 'string' || isFunction(b)) 
-        return dom('text').html(b)
     if (Array.isArray(b)) 
         return (typeof b[0] === 'function')
             ? b 

@@ -3,10 +3,12 @@ let __ = require('lolo'),
     Show = require('./show'),
     Tracer = require('./tracer');
 
-let parse = require('./_parse');
+let parse = require('./_parse'),
+    data = require('./_data');
 
 let files = {
-   parse : parse
+    parse,
+    data 
 };
 
 //------ Test ------
@@ -33,7 +35,6 @@ test.file = (units, file) => {
         unit => Tracer.try(unit)() 
     )(units));
 }
-
 
 //------ Run ------
 

@@ -35,18 +35,19 @@ data.tree = self => data(self);
 
 //  Dom(m) :: {m ?-> a}
 let types = {
-tag:    'm?a',
-    svg:    'm?a',
-    attr:   'm?{m?a}', 
-    prop:   'm?{m?a}',
-    style:  'm?{m?a}',
-    on:     'm?{f(-,m)}',
-    html:   'm?a',
-    value:  'm?a',
-    class:  'm?a',
-    place:  'm?a',
-    put:    'm?a',
-    push:   'f(-,m)'
+    tag:        'm?a',
+    svg:        'm?a',
+    attr:       'm?{m?a}', 
+    prop:       'm?{m?a}',
+    style:      'm?{m?a}',
+    on:         'm?{f(-,m)}',
+    html:       'm?a',
+    value:      'm?a',
+    class:      'm?a',
+    classes:    '[m?a]',
+    place:      'm?a',
+    put:        'm?a',
+    push:       'f(-,m)'
 };
 
 //  fun : (m ?-> a) -> m -> a 
@@ -57,9 +58,10 @@ let fun = y => typeof y === 'function'
 //  maps : lots of fun
 let maps = {
     'm?a':          fun,
-    'm?{m?a}':      __(fun, _r.map(fun), _r.apply),
-    'm?{f(-,m)}':   fs => M => _r.map(__.bindr(M))(fun(fs)(M)),
-    'f(-,m)':       f => M => __.bindr(M)(f)
+    '[m?a]':        __(__.map(fun), __.apply),
+    'm?{m?a}':      as => m => _r.apply(_r.map(fun)(fun(as)(m)))(m),
+    'm?{f(-,m)}':   fs => m => _r.map(__.bindr(m))(fun(fs)(m)),
+    'f(-,m)':       f => m => __.bindr(m)(f)
 };
 
 //------ Node Maps ------
@@ -75,7 +77,7 @@ data.rmaps = ([n, b], k) =>
 //  .node : Dom(m) -> m -> d  
 data.node = 
     self => m => __(
-        _r.without('branch', 'pull'), 
+        _r.without('branch', 'pull', 'type'), 
         _r.map((dk, k) => maps[types[k]](dk)),
         _r.apply
     )(self)(m);

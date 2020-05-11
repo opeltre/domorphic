@@ -9,6 +9,18 @@ exports.tag = () => {
     return check.sub(expect, obtain);
 }
 
+exports.value = () => {
+    let expect = {tag: 'input', value: 'write here'},
+        obtain = parse('input', {value: 'write here'});
+    return check.sub(expect, obtain);
+}
+
+exports.classes = () => {
+    let expect = {tag: 'div', classes: ['class1', 'class2']},
+        obtain = parse('div.class1', {classes: ['class2']})
+    return check.sub(expect, obtain);
+}
+
 exports.locators = () => {
     let expect = {tag: 'div', place: 'here', put: 'parent'},
         obtain = parse(':here > parent');

@@ -41,7 +41,7 @@ DOM.set = (n, d) => {
     _r.assign(d.style)(n.style);
     _r.forEach((v, k) => n[k] = v)(d.prop);
     _r.forEach(DOM.setAttribute(n))(d.attr);
-    n.classname = d.class;
+    n.classname = d.classes.join(' ');
     n.innerHTML = d.html;
     n.value = d.value;
     return n;

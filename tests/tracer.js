@@ -88,8 +88,8 @@ let logs = {
     map:    i => `[${i}] -> `,
     rmap:   k => `{${k}} -> `,
     all:    {
-        success: () => '+',
-        failure: () => '-'
+        success: () => '',
+        failure: () => ''
     }
 }; 
 
