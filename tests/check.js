@@ -39,13 +39,22 @@ let type = __(
 );
 
 //  main : Couple a a' -> T Bool 
-let main = (a, b, opt) => {
-    return recursive(...parse(opt))([a, b]); 
+let main = (a, b) => {
+    let tpair = [[a, b], ['\n', 'CheckError:\n']]
+    return Tracer.bind(
+        tpair, 
+        recursive()
+    );
 };
-main.sub = (...pair) => {
-    let C = _r.set('record', Tcheck.subrecord)(Tcheck);
-    return recursive(C)(pair);
-}
+
+main.sub = (a, b) => { 
+    let tpair = [[a, b], ['\n', 'CheckError: (subrecord)\n']],
+        C = _r.set('record', Tcheck.subrecord)(Tcheck)
+    return Tracer.bind(
+        tpair,
+        recursive(C)
+    );
+};
 
 let recursive = (C=Tcheck, T=Tracer) => { 
     let next = {
@@ -64,8 +73,8 @@ let recursive = (C=Tcheck, T=Tracer) => {
 };
 
 let parse = options => {
-    let C = _r.map(__.id)(check);
-    if (/subr/.test(options)) 
+    let C = _r.map(__.id)(Tcheck);
+    if (/sub/.test(options)) 
         C = _r.set('record', C.subrecord)(C);
     if (/suba/.test(options))
         C = _r.set('array', C.subarray)(C);
@@ -130,12 +139,13 @@ function diffKeys ([a, b]) {
 
 //------ Trace ------
 
-let json = r => JSON.stringify(r, null, 2);
+let json = r => JSON.stringify(r);
 
 //  msg : Pair a -> [String]
 let msg = ([e, o], str=__.id) => ['\n\n', ''
     + `\t> expected: ${str(e)}\n`
     + `\t> obtained: ${str(o)}\n`
+    + '\n'
 ];
 
 msg.type   = p => ['in type:', ...msg(p, type)];

@@ -91,7 +91,8 @@ IO.replace = (dom_, k) => m => {
 
 IO.remove = (dom_) => m => {
     let io = IO(); 
-        key = dom_._domInstance ? data.node(dom_)(m).place : dom_
+        key = typeof dom_ === 'string' ? dom_  
+            : data.node(dom_)(m).place;
     return io.select(key)
         .do(n => n.remove())
         .do(n => remove(io, key))
