@@ -1,6 +1,6 @@
 let __ = require('lolo'),
     _r = __.record(),
-    tree = require('./tree');
+    sort = require('./sort');
 
 /*------ Data ------
     
@@ -23,17 +23,20 @@ let __ = require('lolo'),
     which we denote by `m ?-> b`. 
 */ 
 
-let data = self => m0 => {
+//  data : Dom(m) -> m -> Tree(d)
+let data = self => (m0, k) => {
     let m1 = self.pull(m0); 
     return data.link(
-        data.node(self)(m1),
+        data.node(self)(m1, k),
         data.branch(self)(m1)
     );
 }
 
 data.tree = self => data(self); 
 
-//  Dom(m) :: {m ?-> a}
+//------ Apply ------
+
+//  Dom(m): { k: types[k] }
 let types = {
     tag:        'm?a',
     svg:        'm?a',
@@ -47,6 +50,7 @@ let types = {
     classes:    '[m?a]',
     place:      'm?a',
     put:        'm?a',
+    sortBy:     'm?a',
     push:       'f(-,m)'
 };
 
@@ -59,45 +63,58 @@ let fun = y => typeof y === 'function'
 let maps = {
     'm?a':          fun,
     '[m?a]':        __(__.map(fun), __.apply),
-    'm?{m?a}':      as => m => _r.apply(_r.map(fun)(fun(as)(m)))(m),
+    'm?{m?a}':      as => m => _r.map(fun, __.$(m))(fun(as)(m)),
     'm?{f(-,m)}':   fs => m => _r.map(__.bindr(m))(fun(fs)(m)),
     'f(-,m)':       f => m => __.bindr(m)(f)
 };
 
-//------ Node Maps ------
-
-data.maps = ([n, b], i) => 
-    [_r.set('place', [`[${d.place}]`, i]), b];
-
-data.rmaps = ([n, b], k) => 
-    [_r.set('place', [`{${d.place}}`, k]), b];
-
-//------ Tree Elements ------
-
 //  .node : Dom(m) -> m -> d  
 data.node = 
-    self => m => __(
+    self => (m, k) => __(
         _r.without('branch', 'pull', 'type'), 
         _r.map((dk, k) => maps[types[k]](dk)),
         _r.apply
-    )(self)(m);
+    )(self)(m, k);
+
+
+//------ Branches ------
+
+//  .maps : Tree(d) -> Int -> Tree(d)
+data.maps = ([n, b], i) => n.place 
+    ? [_r.set('place', [`[${n.place}]`, i])(n), b]
+    : [n, b]
+//  .rmaps : Tree(d) -> Str -> Tree(d)
+data.rmaps = ([n, b], k) => n.place
+    ? [_r.set('place', [`{${n.place}}`, k])(n), b]
+    : [n, b]
 
 //  .branch : Dom(m) -> m -> [Tree(d)]
 data.branch = 
     self => m => {
         let b = fun(self.branch)(m); 
-        if (b.type === 'map') 
-            return b.pull(m)
-                .map(data(b)(m))
-                .map(data.maps) 
-        if (b.type === 'rmap') 
-            return _r.map(
-                data(b)(m),
-                data.rmaps
-            )(b.self.pull(m));
-        else 
+        if (Array.isArray(b))
             return b.map(n => data(n)(m));
+        if (b.type === 'map') 
+            return (b.pull || __.id)(m)
+                .map(data(b.node))
+                .map(data.maps) 
+        if (b.type === 'rmap') {
+            let ms = (b.pull || __.id)(m),
+                keys = b.sortBy ? sort(...b.sortBy)(_r.toPairs(ms))
+                    : _r.keys(ms),
+                nodes = __(
+                    _r.map(data(b.node)),
+                    _r.map(data.rmaps)
+                )(ms); 
+            return keys.map(k => nodes[k]);
+        }
+        else 
+            throw branchError(b); 
     };
+
+let branchError = b => TypeError(
+    `Branch: expected array or map instance, received ${typeof b}`
+);
 
 //------ Tree Constructor ------
 

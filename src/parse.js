@@ -5,10 +5,10 @@ let dom = require('./dom'),
     _r = __.r;
 
 let isFunction = y => typeof y === 'function', 
-    toFunction = y => isFunction(y) ? y : () => y;
-    isBranches = b => Array.isArray(b) || isFunction(b);
+    toFunction = y => isFunction(y) ? y : () => y,
+    isBranches = a => Array.isArray(a) || isFunction(a);
 
-function parse (t, a={}, b=[]) {
+function parse (t, a={}, b) {
 
     //--- arguments --- 
 
@@ -18,45 +18,45 @@ function parse (t, a={}, b=[]) {
     // ([t, {as}, [bs])
     if (Array.isArray(t))
         return parse(...t)
-    // (t, [bs]) 
-    if (isBranches(a))
-        [a, b] = [{}, a];
+    // (t, m?[bs]) or (t, m?{as}, []) 
+    if (!b) 
+        [a, b] = isBranches(a) ? [{}, a] : [a, []];
 
-    //------ 
+    //------
 
     let {tag, id, classes, place, put} = parse.tag(t);
 
-    let branch = isFunction(b)
-        ? __(b, __.map(parse)) 
-        : b.map(parse)
-
-    //--- 
-
+    let branches = ns => Array.isArray(ns)
+        ? __.map(parse)(ns) 
+        : parse(ns);
+    
     let self = {
+        //  node
         tag:        tag,
         svg:        tag === 'svg' || tag === 'g',
         attr:       id ? {id} : {},
         class:      '',
         classes:    classes.concat(a.classes || []),
-        // IO location
+        //  IO location
         put:        put     || 'body',
         place:      place   || null,
-        // type:
-        type:       'node',
-        // branches
-        branch:     branch
+        //   branches
+        branch:     isFunction(b) ? __(b, branches) : branches(b)
     };
     
     let join = {
+        //  node
         html:       a.html  || '',
         value:      a.value ||'',
         style:      a.style || {},
         prop:       a.prop  || {},
         on:         a.on    || {},
-        // pull-back
+        //  pull-back
         pull:       a.pull  || __.id,
-        // push-forward 
-        push:       a.push  || __.id
+        //  push-forward 
+        push:       a.push  || __.id,
+        //  type:
+        type:       a.type  || 'node'
     }; 
 
     let attr = _r.without(..._r.keys(join))(a);
@@ -65,8 +65,8 @@ function parse (t, a={}, b=[]) {
         .filter(k => /^on/.test(k));
 
     onkeys
-        .forEach((l, k) => {
-            join.on[k.slice(2)] = l;
+        .forEach(k => {
+            join.on[k.slice(2)] = attr[k];
             delete attr[k];
         });
 
@@ -74,15 +74,6 @@ function parse (t, a={}, b=[]) {
 
     return _r.update(join)(self);
 }
-
-parse.branch = b => {
-    if (Array.isArray(b)) 
-        return (typeof b[0] === 'function')
-            ? b 
-            : parse(...b)
-    return b
-};
-
 
 parse.tag = string => {
 
