@@ -45,28 +45,34 @@ data.types = {
     value:  'm?a',
     class:  'm?a',
     place:  'm?a',
-    put:    'm?a'
+    put:    'm?a',
+    push:   'f(n,m)'
 };
 
 data.maps = {
     'm?a':      __.id,
 //              {m ?-> a} -> m -> {a}
     'm?{m?a}':  __(_r.map(v => __(v)), _r.apply),
-//              {l} -> m -> {l(m)}
-    'm?{e(m)}': listeners => M => _r.map(__.bindr(M))(listeners)
+//              {l} -> m -> {l(-, m)}
+    'm?{e(m)}': listeners => M => _r.map(__.bindr(M))(listeners),
+//              f -> m -> f(-, m)
+    'f(n,m)':   f => M => __.bindr(M)(f)
 };
+
+/*  ---->   crooked!    */ 
 
 //  .apply : data(m) -> m -> data
 data.apply = 
-    D => M => __(
-        _r.map(
+    D => M => {
+        let D1 = _r.map(
 //          (m ?-> d(m)) -> m -> m ?-> d 
             (Dk, k) => __(Dk, data.maps[data.types[k]]),
 //          (m -> m ?-> d) -> m -> d
             Dk => M => __(Dk(M))(M)
-        ),
-        _r.apply
-    )(D)(M);
+        )(D);
+        D1.push = data.maps['f(n,m)'](D.push);
+        return _r.apply(D1)(M);
+    };
 
 
 //------ Propagated Attributes ------
