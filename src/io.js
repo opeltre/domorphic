@@ -28,7 +28,7 @@ IO.document = () => DOM();
 
 //------ Event Wrappers ------- 
 
-IO.drag = __(__.log, drag); 
+IO.drag = drag; 
 
 /*------ Output Stream ------
     

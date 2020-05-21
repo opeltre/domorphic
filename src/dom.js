@@ -91,7 +91,6 @@ function dom (t, a, b) {
         place:      null 
     };
    
-    __.logs('other:')(other);
     Object.assign(self, other); 
 
     //  my : m -> node

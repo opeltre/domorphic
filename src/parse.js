@@ -69,7 +69,7 @@ Parse.branch =
 Parse.tag =             // match 'tagname#id.class.class2' 
 
     tag => {
-        let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)|(:[\w\-]*)|(>\s[\w\-]*)/g,
+        let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)|(:[\w\-]*)|(>\s[#\w\-]*)/g,
             matches = tag.match(re);
 
         let classes = [],

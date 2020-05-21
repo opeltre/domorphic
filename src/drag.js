@@ -24,9 +24,6 @@ module.exports = function (svg) {
 
     let element = null;
 
-    console.log('loaded')
-    console.log(svg);
-
     svg.addEventListener('mousedown', start);
     svg.addEventListener('mousemove', drag);
     svg.addEventListener('mouseup', end);

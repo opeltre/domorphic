@@ -88,7 +88,7 @@ __.range =
 
 __.linspace = 
     (t0, t1, n=20) => __.range(n)
-        .map(t => t * (t1 - t0) / (n - 1));
+        .map(t => t0 + t * (t1 - t0) / (n - 1));
 
 __.concat = 
     (as, bs) => [...as, ...bs];
@@ -110,7 +110,7 @@ __.filter =
     f => arr => arr.filter(f);
 
 __.reduce = 
-    f => arr => arr.reduce(f);
+    (f, acc) => arr => arr.reduce(f, acc);
 
 
 //--------- z z z -----------------
@@ -454,7 +454,7 @@ function Tensor(K={}) {
 
     _K.span = 
         (ks, as) => _K.add(
-            as.map((a, i) => _K.scale(ks[i])(a))
+            ...as.map((ai, i) => _K.scale(ks[i])(ai))
         );
 
     _K.zero = 
@@ -774,6 +774,8 @@ Note: operations could be made chainable:
 
 This would be a nice balance for the necessity 
 to pass the record at the end 
+
+>> Monads
 */
 
 function Record () {
@@ -788,7 +790,7 @@ function Record () {
 
     //.isEmpty : {a} -> bool
     my.isEmpty =
-        r => my.keys(r).length > 0
+        r => my.keys(r).length === 0;
     
     //.null : [str] -> {null} 
     my.null = 
@@ -924,6 +926,28 @@ function Record () {
             )(r);
             return pairs;
         };
+
+    //.sortBy : (a -> a -> Bool, Bool) -> {a} -> [(a, str)] 
+    my.sortBy = (ord, rev) => r => {
+        let sorts = (x, y) => x < y ? -1 : (x > y ? 1 : 0),
+            sign = m => o => m ? - o : o,
+            order;
+        // sortBy('!field') 
+        if (typeof ord === 'string' && ord[0] === '!' 
+            && typeof rev === 'undefined')
+            return my.sortBy(ord.slice(1), true)(r);
+        // sortBy('field')
+        if (typeof ord === 'string') 
+            order = ([xi, i], [yj, j]) => sign(rev)(sorts(xi[ord], yj[ord]));
+        // sortBy(boolf) 
+        else if (typeof ord === 'function')
+            order = ([xi, i], [yj, j]) => sign(rev)(ord(xi, yj) ? -1 : 1)
+        // sortBy()
+        else
+            order = ([xi, i], [yj, j]) => sign(ord)(sorts(i, j))
+        return my.toPairs(r)
+            .sort(order);
+    }
     
     //.fromPairs : [(a, str)] -> {a} 
     my.fromPairs = 
@@ -1714,7 +1738,6 @@ function dom (t, a, b) {
         place:      null 
     };
    
-    __.logs('other:')(other);
     Object.assign(self, other); 
 
     //  my : m -> node
@@ -1819,9 +1842,6 @@ module.exports = function (svg) {
 
     let element = null;
 
-    console.log('loaded')
-    console.log(svg);
-
     svg.addEventListener('mousedown', start);
     svg.addEventListener('mousemove', drag);
     svg.addEventListener('mouseup', end);
@@ -1910,7 +1930,7 @@ IO.document = () => DOM();
 
 //------ Event Wrappers ------- 
 
-IO.drag = __(__.log, drag); 
+IO.drag = drag; 
 
 /*------ Output Stream ------
     
@@ -2334,7 +2354,7 @@ Parse.branch =
 Parse.tag =             // match 'tagname#id.class.class2' 
 
     tag => {
-        let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)|(:[\w\-]*)|(>\s[\w\-]*)/g,
+        let re = /^(\w)+|(#[\w\-]*)|(\.[\w\-]*)|(:[\w\-]*)|(>\s[#\w\-]*)/g,
             matches = tag.match(re);
 
         let classes = [],
