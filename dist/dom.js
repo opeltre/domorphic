@@ -266,12 +266,13 @@ _R.gibbs =
 _R.effE = 
     (is, js) => 
         H => {
-            let m = _R.min(H),
-                H_m = _R.map(h => h - m)(H),
-                sum = _R.project(is, js),
+            let min = _R.fold(Math.min)(is, js),
+                ext = _R.extend(is, js, _R.shape(H)),
+                sum = _R.project(is, js);
+            let m = min(H),
+                H_m = _R.subt(H, ext(m)),
                 eff_m = _R._log(sum(_R.exp_(H_m)));
-
-            return _R.map(h => h + m)(eff_m);
+            return _R.add2(eff_m, m);
         };
 
 module.exports = _R;
@@ -523,7 +524,7 @@ function Tensor(K={}) {
                 ? q 
                 : (i === j 
                     ? q.map(_K.extend(is, js, Es))
-                    : E.map(
+                    : (Array.isArray(E) ? E : __.range(E)).map(
                         _ => _K.extend(is, [j, ...js], Es)(q)
                     )
                 );
@@ -713,7 +714,20 @@ function ND() {
                 )
             )
             : p;
-    
+
+    let fold = (f) => ([i, ...is], [j, ...js]) => 
+            q => typeof(i) === 'undefined'
+                ? q
+                : i === j 
+                    ? __.map(fold(f)(is, js))(q)
+                    : fold(f)(is, [j, ...js])(
+                        q.reduce(my.map2(f))
+                    )
+
+    my.fold = (f, x0) => (is, js) => Array.isArray(is) && Array.isArray(js)
+        ? fold(f, x0)(is, js)
+        : fold(f, x0)(is.split('.'), js.split('.'));
+
     //------ initialise from callable ------
 
     let compute = ([E, ...Es]) => 
@@ -1026,6 +1040,11 @@ function baseSpace (G, N) {
     NG.add = 
         (...us) => us.reduce(NG.add2);
 
+    NG.span = 
+        (ks, as) => NG.add(
+            ...as.map((ai, i) => NG.scale(ks[i])(ai))
+        );
+
     NG.subt = 
         (u, v) => NG.add(u, NG.scale(-1)(v));
 
@@ -1289,7 +1308,13 @@ Nerve.record = function (X) {
         intervals = _r.compute(__.xargs(N.interval), chain.id)(N(1)),
         intercones = _r.compute(__.xargs(N.intercone), chain.id)(N(1));
         
-    let mu = _r.compute(__.xargs(N.mu), chain.id)([...X.map(a => [a, a]), ...N(1)]);
+    let mu = _r.compute(__.xargs(N.mu), chain.id)
+        ([...X.map(a => [a, a]), ...N(1)]);
+    let c = _r.compute(
+        b => cocones[cell.id(b)]
+            .reduce((cb, a) => cb + mu[chain.id([a, b])], 0),
+        cell.id
+    )(X);
 
     N.cone = a => cones[cell.id(a)];
     N.cocone = b => cocones[cell.id(b)];
@@ -1297,6 +1322,8 @@ Nerve.record = function (X) {
     N.intercone = (a, c) => intercones[chain.id([a, c])];
 
     N.mu = (a, c) => mu[chain.id([a, c])];
+
+    N.c = a => c[cell.id(a)];
 
     N.cofaces =  
         k => 
